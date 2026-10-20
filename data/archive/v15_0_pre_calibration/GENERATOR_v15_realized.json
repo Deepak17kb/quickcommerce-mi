@@ -1,0 +1,139 @@
+{
+  "params": {
+    "burn_in_snapshots": 60,
+    "hazard": {
+      "form": "h(r) = 1 - exp(-m * ((r/lam)^k - ((r-1)/lam)^k)),  r = consecutive in-stock snapshots so far",
+      "shape_k": 2.0,
+      "scale_lam_by_group": {
+        "FAST": 15.0,
+        "MEDIUM": 27.0,
+        "SLOW": 38.0
+      },
+      "scale_mult_by_platform": {
+        "Blinkit": 1.0,
+        "Swiggy Instamart": 0.95,
+        "Flipkart Minutes": 0.85,
+        "BigBasket": 1.1
+      },
+      "scale_product_frailty_lognormal_sd": 0.25,
+      "m_hour": {
+        "9": 0.7,
+        "18": 1.4
+      },
+      "m_promo_depth": "m *= 1 + 1.5 * discount_depth",
+      "m_store_demand": "m *= exp(0.30 * D[store, t])",
+      "resets_on_restock": true
+    },
+    "restock": {
+      "form": "D = 1 + NegativeBinomial(n=2, mean=mu - 1)",
+      "negbin_n": 2.0,
+      "mean_mu_by_group": {
+        "FAST": 1.6,
+        "MEDIUM": 2.5,
+        "SLOW": 4.0
+      },
+      "mean_mult_by_platform": {
+        "Blinkit": 0.85,
+        "Swiggy Instamart": 0.9,
+        "Flipkart Minutes": 1.25,
+        "BigBasket": 1.15
+      }
+    },
+    "store_demand": {
+      "form": "D[s,t] = phi * D[s,t-1] + sqrt(1 - phi^2) * N(0,1)",
+      "phi": 0.5
+    },
+    "price": {
+      "form_leader": "x[t] = rho_leader * x[t-1] + N(0, sigma_leader)",
+      "form_follower": "x[t] = rho_follower * x[t-1] + beta * (x_leader[t-lag] - x[t-1]) + N(0, sigma_follower)",
+      "price": "selling_price = round(level * exp(x + wave[platform, t]))",
+      "leader": "Blinkit",
+      "rho_leader": 0.6,
+      "sigma_leader": 0.03,
+      "rho_follower": 0.6,
+      "sigma_follower": 0.02,
+      "followers": {
+        "Swiggy Instamart": {
+          "beta": 0.45,
+          "lag": 1
+        },
+        "Flipkart Minutes": {
+          "beta": 0.3,
+          "lag": 1
+        },
+        "BigBasket": {
+          "beta": 0.35,
+          "lag": 2
+        }
+      },
+      "no_leader_listing": "beta = 0 when the product is not carried by Blinkit",
+      "platform_wave_sd": 0.005,
+      "rounding": "nearest 0.10 below Rs 20, nearest Rs 1 otherwise",
+      "level": "panel mean of v14 selling_price (keeps each platform's positioning)",
+      "mrp": "promo panels: mrp = ceil(price / (1 - depth * U(0.75, 1.15))), depth clipped to [0.02, 0.60]; else mrp = price"
+    },
+    "eta": {
+      "form": "eta_min = round(base[platform] + store_eff[store] + peak*[hour==18] + b_demand*D[s,t] + b_discount*discount_depth + b_store_oos*(store OOS share - platform mean) + N(0, noise_sd)), >= 5",
+      "base_by_platform": {
+        "Blinkit": 9.5,
+        "Swiggy Instamart": 9.5,
+        "Flipkart Minutes": 11.5,
+        "BigBasket": 13.5
+      },
+      "store_effect_sd": 1.5,
+      "peak_18h_minutes": 3.5,
+      "b_demand": 1.6,
+      "b_discount": 4.0,
+      "b_store_oos": 8.0,
+      "noise_sd": 1.0,
+      "eta_max": "eta_min + U{4..10}"
+    }
+  },
+  "realized": {
+    "seed": 20260917,
+    "store_effect_minutes": {
+      "BGB-BBSR-001": 0.106,
+      "BGB-BBSR-002": 0.3,
+      "BGB-BBSR-003": 1.927,
+      "BGB-BBSR-004": -0.299,
+      "BGB-BBSR-005": 1.743,
+      "BGB-BBSR-006": 1.418,
+      "BLK-BBSR-001": -1.424,
+      "BLK-BBSR-002": 0.816,
+      "BLK-BBSR-003": -1.804,
+      "BLK-BBSR-004": 0.988,
+      "BLK-BBSR-005": 0.108,
+      "BLK-BBSR-006": -0.332,
+      "BLK-BBSR-007": 1.603,
+      "BLK-BBSR-008": 1.043,
+      "FKM-BBSR-001": 1.195,
+      "FKM-BBSR-002": 1.176,
+      "FKM-BBSR-003": -0.452,
+      "FKM-BBSR-004": 1.176,
+      "FKM-BBSR-005": -0.329,
+      "FKM-BBSR-006": 0.974,
+      "INS-BBSR-001": 0.719,
+      "INS-BBSR-002": 0.14,
+      "INS-BBSR-003": 2.238,
+      "INS-BBSR-004": 2.673,
+      "INS-BBSR-005": -0.056,
+      "INS-BBSR-006": -0.398,
+      "INS-BBSR-007": -1.093,
+      "INS-BBSR-008": 1.913,
+      "INS-BBSR-009": 0.406,
+      "INS-BBSR-010": 0.083
+    },
+    "panels": 9814,
+    "snapshots": 60,
+    "panels_by_group": {
+      "MEDIUM": 4318,
+      "SLOW": 3861,
+      "FAST": 1635
+    },
+    "followers_without_leader_listing": 1335,
+    "offers_cleared_out_of_stock": 68594,
+    "offers_cleared_value_ge_price": 7282,
+    "common_panel_before": 2000,
+    "common_panel_after": 2000
+  }
+}

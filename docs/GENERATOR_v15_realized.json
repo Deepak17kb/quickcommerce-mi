@@ -1,0 +1,249 @@
+{
+  "params": {
+    "burn_in_snapshots": 60,
+    "hazard": {
+      "form": "h(r) = 1 - exp(-m * ((r/lam)^k - ((r-1)/lam)^k)),  r = consecutive in-stock snapshots so far",
+      "shape_k": 2.0,
+      "scale_lam_by_category": {
+        "Baby Care": 48.8,
+        "Bakery & Biscuits": 28.73,
+        "Beverages": 116.67,
+        "Dairy, Bread & Eggs": 45.09,
+        "Dry Fruits & Nuts": 18.88,
+        "Electronics & Stationery": 50.24,
+        "Fashion & Lifestyle": 95.53,
+        "Frozen Foods": 46.78,
+        "Fruits & Vegetables": 16.29,
+        "Health & Wellness": 41.21,
+        "Home & Cleaning": 111.07,
+        "Instant & Ready to Eat": 37.71,
+        "Kitchen & Dining": 65.94,
+        "Masala, Oil & More": 33.69,
+        "Other / General Merchandise": 71.54,
+        "Personal Care": 55.96,
+        "Pet Supplies": 83.03,
+        "Sauces, Spreads & Pickles": 47.73,
+        "Snacks & Munchies": 15.28,
+        "Staples & Grains": 19.98,
+        "Sweets & Chocolates": 50.54,
+        "Tea, Coffee & More": 35.62
+      },
+      "scale_mult_by_platform": {
+        "Blinkit": 1.0,
+        "Swiggy Instamart": 0.9943,
+        "Flipkart Minutes": 1.0637,
+        "BigBasket": 1.5239
+      },
+      "scale_product_frailty_lognormal_sd": 0.25,
+      "m_hour": {
+        "9": 0.7,
+        "18": 1.4
+      },
+      "m_promo_depth": "m *= 1 + 1.5 * discount_depth",
+      "m_store_demand": "m *= exp(0.30 * D[store, t])",
+      "resets_on_restock": true
+    },
+    "restock": {
+      "form": "D = 1 + NegativeBinomial(n=2, mean=mu - 1)",
+      "negbin_n": 2.0,
+      "mean_mu_by_group": {
+        "FAST": 1.6,
+        "MEDIUM": 2.5,
+        "SLOW": 4.0
+      },
+      "mean_mult_by_platform": {
+        "Blinkit": 0.85,
+        "Swiggy Instamart": 0.9,
+        "Flipkart Minutes": 1.25,
+        "BigBasket": 1.15
+      }
+    },
+    "store_demand": {
+      "form": "D[s,t] = phi * D[s,t-1] + sqrt(1 - phi^2) * N(0,1)",
+      "phi": 0.5
+    },
+    "price": {
+      "form_leader": "x[t] = rho_leader * x[t-1] + N(0, sigma_leader)",
+      "form_follower": "x[t] = rho_follower * x[t-1] + beta * (x_leader[t-lag] - x[t-1]) + N(0, sigma_follower)",
+      "price": "selling_price = round(level * exp(x + wave[platform, t]))",
+      "leader": "Blinkit",
+      "rho_leader": 0.6,
+      "sigma_leader": 0.03,
+      "rho_follower": 0.6,
+      "sigma_follower": 0.02,
+      "followers": {
+        "Swiggy Instamart": {
+          "beta": 0.45,
+          "lag": 1
+        },
+        "Flipkart Minutes": {
+          "beta": 0.3,
+          "lag": 1
+        },
+        "BigBasket": {
+          "beta": 0.35,
+          "lag": 2
+        }
+      },
+      "no_leader_listing": "beta = 0 when the product is not carried by Blinkit",
+      "platform_wave_sd": 0.005,
+      "rounding": "empirical endings: whole rupees; one pricing style per panel drawn from the REAL Blinkit style shares of its price band; price snapped to that style's grid",
+      "ending_style_probs_by_band": {
+        "<20": {
+          "x9": 0.3046,
+          "x0": 0.1126,
+          "x5": 0.1589,
+          "rupee": 0.4238
+        },
+        "20-99": {
+          "x9": 0.1284,
+          "x0": 0.3147,
+          "x5": 0.1868,
+          "rupee": 0.3701
+        },
+        "100-499": {
+          "x99": 0.1208,
+          "x9": 0.1672,
+          "x0": 0.319,
+          "x5": 0.1731,
+          "rupee": 0.2199
+        },
+        "500+": {
+          "x49_x99": 0.521,
+          "x50_x00": 0.1303,
+          "x9": 0.0367,
+          "x0": 0.0977,
+          "x5": 0.0865,
+          "rupee": 0.1278
+        }
+      },
+      "style_grid": {
+        "x9": [
+          10,
+          9
+        ],
+        "x0": [
+          10,
+          0
+        ],
+        "x5": [
+          10,
+          5
+        ],
+        "x99": [
+          100,
+          99
+        ],
+        "x49_x99": [
+          50,
+          49
+        ],
+        "x50_x00": [
+          50,
+          0
+        ],
+        "rupee": [
+          1,
+          0
+        ]
+      },
+      "style_assignment": "drawn once per panel from the band of its v14 price level; fixed over time (assumption: one real snapshot cannot show whether a product keeps its ending style)",
+      "expected_measured_beta": {
+        "Swiggy Instamart": 0.22,
+        "Flipkart Minutes": 0.154,
+        "BigBasket": 0.181
+      },
+      "level": "panel mean of v14 selling_price (keeps each platform's positioning)",
+      "mrp": "promo panels: mrp = ceil_to_rupee(price / (1 - depth * U(0.75, 1.15))), depth clipped to [0.02, 0.60], at least price + 1; else mrp = price (MRP endings are not calibrated)"
+    },
+    "eta": {
+      "form": "eta_min = round(base[platform] + store_eff[store] + peak*[hour==18] + b_demand*D[s,t] + b_discount*discount_depth + b_store_oos*(store OOS share - platform mean) + N(0, noise_sd)), >= 5",
+      "base_by_platform": {
+        "Blinkit": 9.5,
+        "Swiggy Instamart": 9.5,
+        "Flipkart Minutes": 11.5,
+        "BigBasket": 13.5
+      },
+      "store_effect_sd": 1.5,
+      "peak_18h_minutes": 3.5,
+      "b_demand": 1.6,
+      "b_discount": 4.0,
+      "b_store_oos": 8.0,
+      "noise_sd": 1.0,
+      "eta_max": "eta_min + U{4..10}"
+    },
+    "provenance": {
+      "REAL_CALIBRATED": {
+        "hazard.scale_lam_by_category": "REAL Blinkit per-category stock-out rate, 2026-07-10 (shrunk targets)",
+        "price.ending_style_probs_by_band": "REAL Blinkit selling-price endings, 2026-07-10"
+      },
+      "ASSUMPTION_NOT_REAL_DERIVED": {
+        "hazard.shape_k": "k = 2 depletion shape (v15.0 design choice)",
+        "hazard.scale_mult_by_platform": "v14 persona stock-out ratios between platforms",
+        "hazard.m_hour": "time-of-day multipliers (real clock time was never recorded)",
+        "hazard.scale_product_frailty_lognormal_sd": "v15.0 design choice",
+        "hazard.m_promo_depth, hazard.m_store_demand": "v15.0 design choice",
+        "restock.*": "group means FAST/MEDIUM/SLOW and platform multipliers (v15.0 assumptions)",
+        "store_demand.*": "v15.0 design choice",
+        "price.* except ending_style_probs_by_band": "leader/follower, rho, sigma, wave, style persistence",
+        "eta.*": "v15.0 design choice; platform base means from v14 personas"
+      }
+    }
+  },
+  "realized": {
+    "seed": 20260917,
+    "store_effect_minutes": {
+      "BGB-BBSR-001": -0.298,
+      "BGB-BBSR-002": 0.444,
+      "BGB-BBSR-003": 0.661,
+      "BGB-BBSR-004": -2.584,
+      "BGB-BBSR-005": 0.851,
+      "BGB-BBSR-006": 1.219,
+      "BLK-BBSR-001": -2.438,
+      "BLK-BBSR-002": -1.542,
+      "BLK-BBSR-003": -1.022,
+      "BLK-BBSR-004": 2.413,
+      "BLK-BBSR-005": 0.292,
+      "BLK-BBSR-006": -2.296,
+      "BLK-BBSR-007": -0.348,
+      "BLK-BBSR-008": 1.606,
+      "FKM-BBSR-001": -1.496,
+      "FKM-BBSR-002": -0.397,
+      "FKM-BBSR-003": -2.058,
+      "FKM-BBSR-004": -1.132,
+      "FKM-BBSR-005": 2.967,
+      "FKM-BBSR-006": -2.269,
+      "INS-BBSR-001": -1.561,
+      "INS-BBSR-002": -0.55,
+      "INS-BBSR-003": 0.633,
+      "INS-BBSR-004": -0.979,
+      "INS-BBSR-005": -1.59,
+      "INS-BBSR-006": -2.105,
+      "INS-BBSR-007": 0.619,
+      "INS-BBSR-008": 0.558,
+      "INS-BBSR-009": 0.229,
+      "INS-BBSR-010": 1.508
+    },
+    "panels": 9814,
+    "snapshots": 60,
+    "panels_by_restock_group": {
+      "MEDIUM": 4318,
+      "SLOW": 3861,
+      "FAST": 1635
+    },
+    "panels_by_ending_style": {
+      "x0": 2520,
+      "rupee": 2307,
+      "x5": 1502,
+      "x49_x99": 1304,
+      "x9": 1253,
+      "x99": 624,
+      "x50_x00": 304
+    },
+    "followers_without_leader_listing": 1335,
+    "offers_cleared_out_of_stock": 37499,
+    "offers_cleared_value_ge_price": 8030,
+    "common_panel_before": 2000,
+    "common_panel_after": 2000
+  }
+}

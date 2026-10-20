@@ -1,0 +1,53 @@
+paths:
+  raw:       data/raw
+  ml:        data/ml
+  reference: data/reference
+  models:    models
+  outputs:   outputs
+
+platforms: [Blinkit, Instamart, FlipkartMinutes, BigBasket]
+
+keys:
+  row:        observation_key          # unique, 610,789/610,789
+  sku:        canonical_product_key    # cross-platform match key, NOT unique
+  listing:    product_id
+  panel:      [platform, store_id, product_id]
+
+# never feed these to a model
+identifier_columns:
+  - observation_key
+  - snapshot_id
+  - platform
+  - store_id
+  - product_id
+  - canonical_product_key
+
+split:
+  column: split      # train / val / test / holdout_real  — chronological, never random
+
+# product matcher (model 1) — src/matching
+matching:
+  blocking:
+    # sorted_neighbourhood is available but off: +27k pairs, no recall gain in the 2026-09-17 measurement
+    methods: [char_ngram, token]
+    ngram_field: base          # base = bracket text stripped; full = whole normalised name
+    ngram_min: 3
+    ngram_max: 3
+    ngram_top_k: 10
+    ngram_min_cosine: 0.6
+    token_max_df: 50
+    token_min_shared: 2
+    token_min_jaccard: 0.5
+    snm_window: 3
+  labels:
+    negative_max_ngram_cos_base: 0.3     # rules R1/R3: different category AND (R1 different / R3 same) pack AND name cosine below this
+    negative_max_jw_base: 0.7            #              AND Jaro-Winkler below this
+    pack_variant_min_ratio: 1.05         # rule R2: same unit, quantities differ by at least this ratio
+    random_pairs: 20000                  # random non-candidate product pairs tested against R1/R2/R3
+    random_same_pack_pairs: 20000        # random pairs within the same pack size (R3 can only fire there)
+    seed: 20260917
+  train:
+    test_share: 0.25
+    seed: 20260917
+    baseline_feature: ngram_cos_full
+    tier3_random_pairs: 200000

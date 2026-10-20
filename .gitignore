@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+.env
+.DS_Store
+.vscode/settings.json
+
+# data is large — keep it out of git, ship it separately
+data/raw/*.csv.gz
+data/raw/*.xlsx
+data/ml/*.csv.gz
+models/*.pkl
+models/*.joblib
+
+# the ML layer and its derived tables are rebuilt from data/raw: python -m src.pipeline.build_features (README, Setup)
+data/ml/
+
+# products a person adds on the site (photos from their camera) stay on their own machine
+data/user_added/
+
+# everything a run writes; the live site is published from outputs/site by scripts/deploy_pages.py
+outputs/*
+!outputs/.gitkeep

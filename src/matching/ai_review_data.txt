@@ -1,0 +1,303 @@
+# AI review of MATCH_REVIEW_PRIORITY.csv — NOT human labels. Written by Claude (claude-opus-5-5) on 2026-09-25.
+# Reviewed blind: names, pack sizes, brands and categories only, in the review page's shuffled order; no stratum,
+# selection reason or similarity score was seen. Never read by src/matching/labels.py (tests/test_matching enforces it).
+# Format: batch_row|label|confidence|reason   label: S same, D different, U unsure (not counted)
+# Rule for one-sided qualifiers: a bracketed variant or size on one side only is U (the other listing may be the same
+# variant, unstated); a variant word inside the product name on one side only is D (a distinct product line).
+189|D|high|flavour: wild berry vs peach
+114|U||size given on one side only
+19|S|high|markup and brand extraction only
+72|D|high|colour
+240|D|high|flavour: chocolate vs natural
+88|D|high|length 15 m vs 5 m
+69|D|high|10 vs 20+ vibration patterns
+287|D|high|colour
+111|D|high|ragi vs rice flour
+188|S|medium|"adjustable" added; same 5-60 kg counter gripper
+229|D|medium|organically grown vs regular
+168|D|high|colour
+6|S|high|case only
+293|D|high|colour
+275|D|high|3 pcs vs 5 x 10 g
+244|D|high|different brand
+200|D|high|durum vs whole wheat
+153|S|high|local name in brackets
+274|S|medium|168 g equals a 6-piece pack of 28 g pies
+1|S|high|markup and brand extraction only
+56|U||size on one side only
+77|D|high|front load vs top load
+47|U||variant (lavender) in brackets on one side only
+155|D|high|size XL vs XXL
+68|D|high|size L vs XL
+120|U||size on one side only
+135|S|high|local name in brackets
+143|S|high|local name in brackets
+190|D|medium|lavender variant inside the name
+156|U||model and colour on one side only
+207|D|high|assorted vs milk chocolate
+48|D|high|size M vs XL
+278|D|high|colour
+138|S|high|local name in brackets
+23|S|high|word order
+73|D|high|size L vs XL
+62|D|high|oat vs almond
+30|D|high|1 kg vs 3 kg
+166|U||"Greek" on one side only, from a Greek-yogurt brand
+89|S|high|pack size repeated in the name
+116|S|high|word order
+247|D|high|flavour
+129|D|medium|chiplets format vs regular butter
+86|D|high|weight 0.5 kg vs 1 kg
+260|D|high|cream size differs (100 g vs 50 g)
+201|D|high|different brand
+178|D|high|chana dal vs kala chana
+238|D|high|flavour
+186|D|high|flavour in the combo
+192|D|high|flavour in the combo
+99|U||size on one side only
+39|D|high|men's vs women's
+280|D|high|colour
+65|D|high|almond vs oat
+197|D|high|flavour
+205|D|high|flavour
+102|D|medium|90% variant inside the name
+243|D|high|oat vs soy
+36|S|high|flavour vs flavoured
+185|D|high|different brand
+257|D|high|flavour
+209|D|high|flavour
+246|D|high|laddu type
+213|D|high|flavour
+117|S|high|local name in brackets
+142|S|high|local name in brackets
+100|U||(Aloo Chaat) on one side only: flavour or description
+83|D|high|size L vs M
+269|D|high|30 pcs vs 7 x 4 g
+146|S|high|local name in brackets
+147|S|high|local name in brackets
+139|S|high|local name in brackets
+208|D|high|almond vs oat
+283|D|medium|single vs mixed flavour
+180|D|high|double vs single line
+296|D|high|colour
+203|D|high|flavour
+41|D|high|bath towel vs hand towel
+272|D|high|powder 400 g vs liquid 400 ml
+291|D|high|colour
+171|D|high|choco fills vs choco nut fills
+17|S|high|markup and brand extraction only
+233|D|high|breadsticks vs pretzel sticks
+228|S|medium|same hooks, attributes reworded
+95|D|high|size M vs XXL
+242|D|high|coffee blend
+227|D|high|theme
+284|U||extra colour on one side only
+84|D|high|age range
+105|D|high|size 10 vs 8 inch
+26|S|medium|"set" added
+237|D|high|plain vs jasmine hair oil
+163|D|high|masoor vs black masoor
+124|S|high|local name in brackets
+64|D|high|almond vs oat
+15|S|high|markup and brand extraction only
+128|S|high|local name in brackets
+18|S|high|markup and brand extraction only
+27|S|high|word repeated
+101|D|high|size 16 vs 22 cm
+149|S|high|local name in brackets
+289|D|high|colour
+256|D|high|different brand
+151|S|high|local name in brackets
+53|U||(Can) on one side only
+92|U||(Desi) on one side only
+49|U||size on one side only
+241|D|high|deep clean vs sensitive soft
+66|D|high|size XL vs XXL
+165|D|high|chunks vs mini chunks
+24|S|high|hyphen only
+78|U||fragrance (Lime Fresh) on one side only
+7|S|high|markup and brand extraction only
+254|D|high|different product line
+76|U||fragrance (Floral) on one side only
+4|S|high|markup and brand extraction only
+150|S|high|local name in brackets
+38|D|high|size L vs M
+34|D|high|3 vs 4 compartments
+2|S|high|markup and brand extraction only
+181|D|high|dosa vs rava dosa
+231|D|high|different serum in the combo
+196|D|high|flavour
+248|D|high|masala type
+12|S|high|markup and brand extraction only
+175|D|high|different brand
+70|U||colour on one side only
+90|D|high|age range
+276|D|high|10 x 200 pulls vs 6 rolls
+204|D|medium|gift set type inside the name
+174|D|high|oats vs ragi
+295|D|high|colour
+183|D|high|flavour
+82|U||size on one side only
+25|S|high|plural only
+28|S|medium|"set" added
+263|U||pack description differs (1 set vs 4 pcs)
+123|D|high|pants vs tape
+118|D|medium|"A+" inside the name
+164|D|high|masala variant
+71|S|high|pack size repeated in the name
+195|S|medium|"Pee Secure" is the product name
+267|U||pack description differs (1 set vs 3 pcs)
+109|U||size on one side only
+9|S|high|markup and brand extraction only
+297|D|high|colour
+161|D|high|front load vs top load
+215|D|high|dark vs twin choco chips
+127|S|high|local name in brackets
+21|S|high|markup and brand extraction only
+42|D|high|clean & care vs clean & fresh
+63|D|high|almond vs oat
+158|D|high|flavour in the combo
+8|S|high|markup and brand extraction only
+279|D|high|colour
+107|D|high|bajra vs ragi flour
+59|D|high|size 10 vs 6 inch
+58|D|high|25 kg vs 15 kg
+51|U||(Can) on one side only
+44|U||colour on one side only
+170|D|high|colour
+85|U||"G+" on one side only
+159|D|high|black vs white peppercorns
+37|D|high|men's vs women's
+110|D|high|age ranges
+173|D|medium|"Premium" inside the name
+193|D|high|green vs red
+194|D|high|different brand
+87|D|high|age range
+232|D|medium|rajma variety
+52|U||(Can) on one side only
+106|S|high|local name in brackets
+29|S|high|wording only
+286|S|high|spelling only
+216|D|high|flavour
+157|S|high|local name in brackets
+108|D|high|flavour
+33|S|high|"box" added
+198|D|high|flavour
+54|U||(Can) on one side only
+294|U||(Tin) on one side only
+252|D|high|flavour
+271|D|high|54 vs 56 pcs
+211|D|high|easy wash vs pro
+226|D|high|chana dal vs peanuts
+14|S|high|markup and brand extraction only
+251|D|high|flavour
+184|D|medium|concentrate vs ready to drink
+220|D|high|coriander vs chilli powder
+160|D|medium|design inside the name
+245|D|high|theme
+264|D|high|64 vs 66 pcs
+239|D|high|different cereal
+224|D|high|chicken vs meat masala
+191|D|high|flavour
+273|D|high|serum size 10 vs 30 ml
+50|D|high|size L vs M
+134|S|high|local name in brackets
+172|S|high|word order
+45|D|high|needle length 0.5 vs 1 mm
+144|D|medium|refill vs full mop
+292|D|high|colour
+81|D|high|size XL vs L
+177|D|high|colour
+97|D|high|front load vs top load
+125|D|high|size L-XL vs S-M
+206|D|high|black vs green olives
+162|D|medium|"Small" inside the name
+277|D|high|46 vs 48 pcs
+281|D|high|colour
+60|D|high|green vs red
+223|D|high|fragrance
+20|S|high|markup and brand extraction only
+75|D|high|size M vs XL
+22|S|high|markup and brand extraction only
+130|S|high|local name in brackets
+74|U||colour on one side only
+282|U||(Pouch) on one side only
+113|D|high|70% vs 85% cocoa
+182|U||"Lid Pack" on one side only
+55|U||size on one side only
+80|U||colour on one side only
+268|U||pack description differs (1 pack vs 60 pcs)
+91|U||colours on one side only
+179|S|high|"Fabric" dropped
+31|S|high|word repeated
+217|D|high|colour
+11|S|high|markup and brand extraction only
+288|D|high|colour
+259|U||pack description differs (1 pack vs 3 pairs)
+234|D|high|flavour
+32|D|high|colour
+133|U||specification on one side only
+253|D|high|flavour
+154|S|high|local name in brackets
+132|S|high|local name in brackets
+10|S|high|markup and brand extraction only
+249|D|high|flavour
+13|S|high|markup and brand extraction only
+140|D|high|pants XL vs tape L
+137|S|high|local name in brackets
+199|D|high|different brand
+126|S|high|markup and local name only
+266|S|high|1 pc vs 1 unit
+94|S|high|local name in brackets
+141|U||(with Pure Cow Ghee) on one side only
+103|U||size on one side only
+187|D|high|flavour
+210|D|high|flavour
+212|D|medium|broom model
+112|D|high|age range
+225|D|high|flavour
+221|D|high|flavour
+35|D|high|men's vs women's
+93|D|high|size L vs XXL
+218|D|high|chicken vs mutton
+261|D|high|cream size differs (100 g vs 50 g)
+96|D|high|arhar vs chana dal
+145|S|high|local name in brackets
+79|U||fragrance (Lime Fresh) on one side only
+236|D|high|heavy vs medium
+148|S|high|local name in brackets
+46|D|high|size L vs XL
+40|D|high|green vs red chilli
+16|S|high|markup and brand extraction only
+230|D|high|masoor split vs mix dal
+255|D|medium|character edition
+219|D|high|flavour
+270|D|high|3 pcs vs 4 x 100 g
+119|D|high|with tray 8 inch vs without tray 6 inch
+104|S|high|local name in brackets
+167|D|medium|guava vs pink guava
+214|D|high|blue light vs silicone
+131|S|high|local name in brackets
+258|S|low|16.3 g vs 16.5 g stick notation
+98|D|high|200 vs 250 ml
+57|D|high|her vs him
+3|S|high|markup and brand extraction only
+235|D|high|flavour
+115|D|high|size L-XL vs XL-XXL
+122|D|high|size 12 vs 9 inch
+176|U||"Pad Thai" on one side only
+285|D|high|colour
+152|S|high|local name in brackets
+5|S|high|markup and brand extraction only
+136|S|high|local name in brackets
+265|S|medium|3 x 30 equals 90 pcs
+43|D|high|men's vs women's
+202|D|high|different brand
+250|D|high|flavour
+121|S|high|local name in brackets
+290|D|high|colour
+222|D|medium|malka masoor vs masoor dal
+61|D|high|10 vs 20+ vibration patterns
+262|D|high|serum size 10 vs 30 ml
+67|D|high|braided vs unbraided
+169|D|high|flavour

@@ -1,0 +1,74 @@
+<title>Qcom · Quick-commerce intelligence</title>
+<link rel="icon" href="favicon.ico" type="image/svg+xml">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0e12" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Qcom">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Manrope:wght@400..800&display=swap">
+<style>
+/*__CSS__*/
+</style>
+
+<div class="ticker" aria-label="Highlights"><div class="lane" id="ticker"></div></div>
+<div id="progress" aria-hidden="true"></div>
+<header class="top">
+  <div class="top-in">
+    <div class="bar">
+      <a class="brand" href="#home"><span class="logo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><span class="wm">Qcom<small>quick-commerce intelligence</small></span></a>
+      <span class="where"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Bhubaneswar · 4 apps · 30 stores</span>
+      <button class="lan-pill" id="lan-pill" type="button" aria-haspopup="dialog" aria-controls="lan-pop" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg><span>On your phone</span></button>
+      <form class="search" id="top-search" autocomplete="off" role="search">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+        <input id="top-q" type="text" placeholder="Ask anything: what if Blinkit cuts prices 3%?" aria-label="Ask the analyst">
+        <button class="btn" type="submit">Ask</button>
+        <div class="drop" id="top-drop" role="listbox" aria-label="Suggestions" hidden></div>
+      </form>
+      <button class="bk-btn" id="bk-btn" type="button" aria-haspopup="dialog" aria-controls="basket" aria-label="Your basket"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.5L20.5 8H6.1"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg><span class="count" id="bk-count" hidden>0</span></button>
+    </div>
+    <nav class="nav" aria-label="Pages" id="nav"></nav>
+  </div>
+</header>
+
+<main class="wrap" id="view" tabindex="-1"></main>
+
+<button id="fab" type="button" aria-haspopup="dialog" aria-controls="dock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.8 7L4 20l1.2-4.4A8 8 0 1 1 21 12z"/></svg>Ask the analyst<span class="count" id="fab-count" hidden></span></button>
+<aside id="dock" role="dialog" aria-label="Analyst" hidden>
+  <header><span class="av"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><b>Analyst<small id="dock-mode">answers with its sources</small></b><a href="#analyst" id="dock-open">Full page</a><button type="button" id="dock-close" aria-label="Close the analyst">Close</button></header>
+  <div class="body" id="dock-body"></div>
+  <form class="foot ask" id="dock-form" autocomplete="off">
+    <input id="dock-input" type="text" placeholder="Ask about prices, stock, delivery or the models" aria-label="Question for the analyst">
+    <button class="btn" type="submit">Ask</button>
+  </form>
+</aside>
+<div id="tip" role="tooltip" hidden></div>
+<button id="totop" type="button" aria-label="Back to top" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<div class="pal-wrap" id="pal" hidden>
+  <div class="pal" role="dialog" aria-modal="true" aria-label="Go anywhere">
+    <label class="pal-in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="pal-q" type="text" placeholder="Pages, products, festivals, or a question" aria-label="Go anywhere" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></label>
+    <div class="pal-list" id="pal-list" role="listbox" aria-label="Results"></div>
+    <div class="pal-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> to move</span><span><kbd>Enter</kbd> to open</span><span><kbd>Ctrl</kbd> <kbd>K</kbd> or <kbd>/</kbd> from any page</span></div>
+  </div>
+</div>
+<div class="bk-wrap" id="basket" hidden>
+  <div class="bk" role="dialog" aria-modal="true" aria-labelledby="bk-title">
+    <header><span class="av"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.5L20.5 8H6.1"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg></span><b id="bk-title">Your basket<small>which app is cheapest for all of it</small></b><button type="button" id="bk-close">Close</button></header>
+    <div class="bk-body" id="bk-body"></div>
+  </div>
+</div>
+<div class="lan-pop" id="lan-pop" role="dialog" aria-label="Open Qcom on a phone or tablet" hidden></div>
+
+<!--__DATA__-->
+<script>
+/*__ANALYST_JS__*/
+</script>
+<script>
+/*__APP_JS__*/
+</script>

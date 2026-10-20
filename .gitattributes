@@ -1,0 +1,7 @@
+# text files keep LF everywhere (the project writes LF on purpose); data and pictures are binary
+* text=auto eol=lf
+*.bat text eol=crlf
+*.parquet binary
+*.xlsx binary
+*.png binary
+*.ipynb text eol=lf

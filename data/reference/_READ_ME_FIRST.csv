@@ -1,0 +1,43 @@
+READ_ME
+*** Blinkit ***
+""
+"REAL rows      : 21,949   (data_status = REAL)"
+"SYNTHETIC rows : 72,000   (data_status = SYNTHETIC)"
+""
+NO EMPTY CELLS. Every column in OBSERVATIONS is populated. How each was
+filled is recorded so you can undo any of it.
+""
+--- MRP ---
+"Where the source had no distinct MRP, mrp is set EQUAL to selling_price and"
+discount_percent is 0. The reading is that those items are simply not
+discounted. The mrp_source column records which rule applied per row:
+   observed_distinct              MRP differed from selling price in the source
+   observed_at_mrp                MRP and selling price matched in the source
+   assumed_equal_to_selling_price MRP was absent; filled from selling price
+"To go back to the stricter view, null out mrp and discount_percent wherever"
+mrp_source == 'assumed_equal_to_selling_price'.
+""
+--- DERIVED (safe) ---
+"pack_qty / pack_unit  parsed from pack_size, now including count units"
+"                      (set, pack, pair, roll, tab, wipe, pull) and ""3 x 72 wipes"""
+unit_price            selling_price / pack_qty
+in_stock              1 where stock_status == Available
+discount_percent      (mrp - selling_price) / mrp * 100
+""
+--- FACTUAL ZEROS / LABELS ---
+brand = UNBRANDED      loose produce that genuinely carries no brand
+"offer_type = NO_OFFER  no promotion was recorded; 0 in offer_value,"
+"                       coupon_required, buy_quantity, get_quantity"
+is_bestseller = 0      not flagged in the source means not flagged
+is_sponsored  = 0
+""
+"--- ASSUMED, REAL ROWS ONLY ---"
+delivery_eta_max = delivery_eta_min. The source showed a single point ETA
+"   (""11 mins""), not a range, so the range collapses to the observed value."
+delivery_fee and minimum_order_value are the standard platform terms; they
+"   are commercial terms, not per-product observations, and were not in the"
+   snapshot. enrichment_provenance on these rows reads
+   'derived_and_platform_defaults' so they stay separable.
+""
+"SAFE USES    : pipeline, dashboards, demos, feature engineering"
+NOT SAFE FOR : quoting a real competitor price from a SYNTHETIC row

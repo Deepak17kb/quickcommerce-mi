@@ -1,0 +1,72 @@
+# CI — on every push: the frozen raw data still matches its hashes, the ML layer rebuilds from it with the leakage
+# verification, the data contracts hold, and the guardrail tests pass. These are the checks a fresh clone can run:
+# model outputs (outputs/) are not in git, so the tests that read them run locally with the full pipeline
+# (python scripts/run_all.py). Versions are pinned to the ones the project was last run with.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  data-guardrails:
+    name: Data, contracts and guardrail tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install
+        run: pip install pandas==3.0.0 numpy==2.4.2 pyarrow==23.0.1 openpyxl==3.1.5 scipy==1.17.0 pytest
+
+      - name: Frozen raw data matches its sha256 baseline
+        run: python scripts/verify_raw_integrity.py
+
+      - name: Build the ML feature layer (prints the leakage verification)
+        run: python -m src.pipeline.build_features
+
+      - name: Derived past-only tables
+        run: |
+          python -m src.features.stock_clock
+          python -m src.features.price_grid
+
+      - name: Data contracts (the gate every model step needs)
+        run: python -m src.pipeline.contracts
+
+      - name: Pipeline runner dependency graph
+        run: python scripts/run_all.py --list
+
+      - name: Guardrail tests
+        run: >-
+          python -m pytest -q
+          tests/test_contracts.py tests/test_run_all.py tests/test_no_leakage.py tests/test_split_no_date_overlap.py
+          tests/test_id_columns_excluded.py tests/test_real_synthetic_counts.py tests/test_regression_cheapest.py
+          tests/test_data_access.py tests/test_feature_tables.py tests/test_generator_dynamics.py
+
+  site:
+    name: Website sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Scripts parse (and carry no regex lookbehind, which older Safari rejects)
+        run: |
+          for f in site/app.js site/analyst.js site/sw.js scripts/site_smoke.js scripts/site_browser_check.js; do node --check "$f"; done
+          if grep -nE '\(\?<[=!]' site/app.js site/analyst.js site/sw.js; then echo "lookbehind found"; exit 1; fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Python sources compile
+        run: python -m compileall -q src scripts tests

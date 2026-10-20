@@ -1,0 +1,26 @@
+# core
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+openpyxl>=3.1
+xlsxwriter>=3.1
+pyarrow>=14.0          # optional, for parquet
+
+# modelling
+scikit-learn>=1.3
+lightgbm>=4.0
+
+# product matching (the next model)
+rapidfuzz>=3.5
+sentence-transformers>=2.2   # optional, for the embedding matcher
+faiss-cpu>=1.7               # optional, for ANN retrieval
+
+# AI analyst (deliverable 13): optional, only for `python -m src.analyst --llm`
+anthropic>=0.100
+
+# notebooks / plots
+jupyter>=1.0
+matplotlib>=3.7
+
+# tests
+pytest>=8.0

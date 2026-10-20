@@ -1,0 +1,420 @@
+<title>Planted vs Recovered</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --page: #eef2f0;
+  --surface: #f7f9f8;
+  --ink: #0f1512;
+  --ink-2: #48514c;
+  --muted: #6f7873;
+  --grid: #dde4e0;
+  --axis: #b6c0ba;
+  --rule: rgba(15, 21, 18, 0.12);
+  --blue: #2a78d6;
+  --orange: #eb6834;
+  --hatch: rgba(15, 21, 18, 0.30);
+  --paper-line: rgba(42, 120, 214, 0.07);
+  --tip-bg: #0f1512;
+  --tip-ink: #f7f9f8;
+  --display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0c0f0d;
+    --surface: #141816;
+    --ink: #edf2ee;
+    --ink-2: #b8c1bc;
+    --muted: #8d9690;
+    --grid: #232a26;
+    --axis: #3b4540;
+    --rule: rgba(237, 242, 238, 0.12);
+    --blue: #3987e5;
+    --orange: #d95926;
+    --hatch: rgba(237, 242, 238, 0.32);
+    --paper-line: rgba(57, 135, 229, 0.08);
+    --tip-bg: #edf2ee;
+    --tip-ink: #0c0f0d;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0c0f0d;
+  --surface: #141816;
+  --ink: #edf2ee;
+  --ink-2: #b8c1bc;
+  --muted: #8d9690;
+  --grid: #232a26;
+  --axis: #3b4540;
+  --rule: rgba(237, 242, 238, 0.12);
+  --blue: #3987e5;
+  --orange: #d95926;
+  --hatch: rgba(237, 242, 238, 0.32);
+  --paper-line: rgba(57, 135, 229, 0.08);
+  --tip-bg: #edf2ee;
+  --tip-ink: #0c0f0d;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.6 var(--sans);
+  margin: 0;
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 0 72px; }
+
+/* ---------- hero: graph paper, the one loud place ---------- */
+.hero {
+  padding-block: 56px 40px;
+  background-image:
+    linear-gradient(var(--paper-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border-bottom: 1px solid var(--rule);
+}
+.eyebrow {
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0 0 18px;
+}
+h1 {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 800;
+  font-size: clamp(44px, 9vw, 96px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0 0 24px;
+  text-wrap: balance;
+}
+h1 .vs {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 0.34em;
+  letter-spacing: 0;
+  vertical-align: 0.9em;
+  color: var(--ink-2);
+  padding-inline: 0.25em;
+}
+.lede { max-width: 62ch; font-size: 18px; color: var(--ink-2); margin: 0; }
+.lede strong { color: var(--ink); font-weight: 600; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-block: 32px 0;
+}
+.stat { background: var(--surface); padding: 14px 16px; }
+.stat .v { font: 600 26px/1.1 var(--sans); display: block; }
+.stat .l { font: 12px/1.35 var(--sans); color: var(--muted); display: block; margin-top: 6px; }
+
+/* ---------- provenance stamps: form, never hue ---------- */
+.stamp {
+  display: inline-flex; align-items: center;
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 5px 8px 4px;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.stamp.real { background: var(--ink); color: var(--page); }
+.stamp.syn {
+  color: var(--ink);
+  background: repeating-linear-gradient(135deg, var(--hatch) 0 1.5px, transparent 1.5px 6px), var(--surface);
+}
+.stamp.mix { color: var(--ink); background: var(--surface); border-style: dashed; }
+.key { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 28px; }
+.key div { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); max-width: 46ch; }
+
+/* ---------- sections ---------- */
+section { padding-block: 48px 8px; }
+h2 {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 112;
+  font-weight: 700;
+  font-size: clamp(26px, 4vw, 36px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+.sub { max-width: 68ch; color: var(--ink-2); margin: 0 0 20px; }
+.sub strong { color: var(--ink); font-weight: 600; }
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 18px 18px 10px;
+}
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+.two h3 { font: 600 16px/1.3 var(--sans); margin: 0 0 4px; }
+.two .note { font-size: 14px; color: var(--ink-2); margin: 0 0 12px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-2); margin: 0 0 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 12px; height: 12px; display: inline-block; flex: none; }
+.sw.dot { border-radius: 50%; background: var(--blue); }
+.sw.hollow { border-radius: 50%; border: 2px solid var(--orange); background: transparent; }
+.sw.ink { background: var(--ink); border-radius: 2px; }
+.sw.orange { background: var(--orange); border-radius: 2px; }
+.sw.blue { background: var(--blue); border-radius: 2px; }
+.sw.gray { background: var(--axis); border-radius: 2px; }
+.sw.rule { height: 2px; width: 18px; background: var(--ink); }
+.sw.rule.o { background: var(--orange); }
+
+.chart { overflow-x: auto; }
+.chart svg { display: block; width: 100%; min-width: 520px; height: auto; }
+/* side-by-side panels scale their charts to fit; only a phone-width column scrolls */
+.two .chart svg { min-width: 0; }
+@media (max-width: 720px) { .two .chart svg { min-width: 460px; } }
+
+/* svg marks — every color from a token */
+svg text { font-family: var(--sans); }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.base { stroke: var(--axis); stroke-width: 1; }
+.ref { stroke: var(--ink); stroke-width: 1.5; }
+.sep { stroke: var(--grid); stroke-width: 1; }
+.tick { fill: var(--muted); font: 11px var(--mono); }
+.axis-title { fill: var(--muted); font-size: 11.5px; }
+.rowlab { fill: var(--ink-2); font-size: 12.5px; }
+.group { fill: var(--ink); font: 600 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.ci { stroke: var(--blue); stroke-width: 2; stroke-linecap: round; opacity: 0.55; }
+.whisk { stroke: var(--ink-2); stroke-width: 1.5; stroke-linecap: round; }
+.whisk.thin { stroke: var(--blue); stroke-width: 1.5; opacity: 0.45; }
+.est { fill: var(--blue); stroke: var(--surface); stroke-width: 2; }
+.est.small { stroke-width: 1.5; }
+.naive { fill: var(--surface); stroke: var(--orange); stroke-width: 2; }
+.bar { stroke: none; }
+.bar.planted { fill: var(--ink); }
+.bar.naive { fill: var(--orange); }
+.bar.corrected { fill: var(--blue); }
+.bar.muted-bar { fill: var(--axis); }
+.line-planted { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.line-naive { fill: none; stroke: var(--orange); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.connector { stroke: var(--axis); stroke-width: 2; }
+.val { fill: var(--ink-2); font: 11px var(--mono); }
+.endlab { fill: var(--ink-2); font-size: 11.5px; }
+.cov { fill: var(--muted); font: 11px var(--mono); }
+.cov.miss { fill: var(--ink); font-weight: 600; }
+[data-tip] { cursor: default; outline: none; }
+[data-tip]:hover, [data-tip]:focus-visible { stroke: var(--ink); stroke-width: 2; }
+
+details { margin: 6px 0 4px; }
+summary { cursor: pointer; font: 500 13px var(--sans); color: var(--ink-2); padding-block: 6px; width: max-content; }
+summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.tbl { overflow-x: auto; margin-top: 6px; }
+table { border-collapse: collapse; font: 13px/1.4 var(--sans); min-width: 100%; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { font-weight: 600; color: var(--ink-2); }
+td { font-variant-numeric: tabular-nums; }
+
+/* ---------- ledger ---------- */
+.ledger { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
+.entry { display: grid; grid-template-columns: 64px 1fr; gap: 16px; padding-block: 18px; border-bottom: 1px solid var(--rule); }
+.num { font: 600 22px/1.2 var(--mono); color: var(--muted); }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 6px; }
+.head h3 { font: 600 18px/1.25 var(--sans); margin: 0; }
+.entry p { margin: 0; max-width: 72ch; color: var(--ink-2); }
+.read { font: 600 16px var(--mono); color: var(--ink); margin-right: 4px; }
+.doc { font: 12px var(--mono); color: var(--muted); margin-top: 6px; }
+
+.cannot { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px 28px; }
+.cannot p { margin: 0; color: var(--ink-2); }
+.cannot b { color: var(--ink); font-weight: 600; }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+footer code { font: 12px var(--mono); color: var(--ink-2); }
+
+#tip {
+  position: fixed; z-index: 10; pointer-events: none;
+  max-width: 300px; padding: 7px 10px; border-radius: 4px;
+  background: var(--tip-bg); color: var(--tip-ink);
+  font: 12.5px/1.4 var(--sans);
+}
+
+@media (max-width: 560px) {
+  .entry { grid-template-columns: 1fr; gap: 4px; }
+  .hero { padding-block: 36px 28px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .est, .naive, .bar { transition: stroke-width 120ms ease; }
+}
+</style>
+
+<div class="hero">
+  <div class="wrap" style="padding-block: 0;">
+    <p class="eyebrow">Quick-commerce market intelligence · Bhubaneswar · Blinkit, Swiggy Instamart, Flipkart Minutes, BigBasket</p>
+    <h1>Planted<span class="vs">vs</span>recovered</h1>
+    <p class="lede">Thirteen models on a dataset where most of the history was <strong>generated on purpose</strong>, because
+      real price, stock and delivery history cannot be collected from these platforms. So every synthetic result below is
+      a calibration: a value the generator planted, and the value the pipeline got back. Only the
+      <strong>{{REAL_ROWS}} Blinkit listings observed on 10 July 2026</strong> count as market fact.</p>
+    <div class="stats" role="list">
+      <div class="stat" role="listitem"><span class="v">{{N_DELIV}}</span><span class="l">deliverables, 1 to 13 with 12a–c</span></div>
+      <div class="stat" role="listitem"><span class="v">{{COVERED}} / {{NCAL}}</span><span class="l">planted values inside their 95% interval</span></div>
+      <div class="stat" role="listitem"><span class="v">{{REAL_ROWS}}</span><span class="l">real listings of {{ALL_ROWS}} rows</span></div>
+      <div class="stat" role="listitem"><span class="v">{{TESTS}}</span><span class="l">tests passing at build</span></div>
+      <div class="stat" role="listitem"><span class="v">{{RAW_OK}}</span><span class="l">raw data, checked by hash in every manifest</span></div>
+    </div>
+    <div class="key">
+      <div><span class="stamp real">REAL · 2026-07-10</span> Market fact about the one observed Blinkit snapshot.</div>
+      <div><span class="stamp syn">SYNTHETIC · pipeline check</span> Shows the method recovers what was planted. Never a claim about the market.</div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <section id="calibration" aria-labelledby="h-cal">
+    <h2 id="h-cal">The calibration sheet</h2>
+    <p class="sub">For each parameter the generator planted in deliverables 5, 7, 8 and 9: the value the model recovered,
+      divided by the planted value. At 1× the pipeline got it exactly. <strong>{{COVERED}} of {{NCAL}}</strong> intervals
+      contain the planted value; the misses are {{MISSES}}. Hollow points show what a naive method reports on the same
+      data. Two planted terms are left off the chart and written up instead: the ETA stock-out effect, which demand
+      confounds (a naive fit reads it 7× too large), and the store-pressure effect, which is measured through a noisy proxy.</p>
+    <div class="panel">
+      <div class="legend">
+        <span><i class="sw dot"></i>recovered, with 95% interval</span>
+        <span><i class="sw hollow"></i>naive method</span>
+        <span><i class="sw rule"></i>planted value (1×)</span>
+      </div>
+      <div class="chart">{{FOREST}}</div>
+      <details><summary>Show the numbers</summary>{{CAL_TABLE}}</details>
+    </div>
+  </section>
+
+  <section id="grids" aria-labelledby="h-grids">
+    <h2 id="h-grids">Price grids hide half a price response</h2>
+    <p class="sub">Shelf prices snap to ₹10, ₹50 and ₹100 steps ending in 9, 49 and 99. A naive regression of each follower on
+      Blinkit reads about half the planted response. Simulating the latent prices through each listing's own grid, then
+      matching what the naive regression sees, gets it back. <strong>This is the finding that transfers to real data</strong>:
+      75% of real Blinkit prices sit on such grids, so real pass-through estimates would be biased the same way.</p>
+    <div class="panel">
+      <div class="legend">
+        <span><i class="sw ink"></i>planted β</span>
+        <span><i class="sw orange"></i>naive β̂</span>
+        <span><i class="sw blue"></i>corrected β̂ (95% interval)</span>
+      </div>
+      <div class="chart">{{BARS}}</div>
+      <details><summary>Show the numbers</summary>{{BARS_TABLE}}</details>
+    </div>
+  </section>
+
+  <section id="hazard" aria-labelledby="h-hazard">
+    <h2 id="h-hazard">Why the pooled hazard curve lies</h2>
+    <p class="sub">The chance of a stock-out rises the longer an item stays in stock (a Weibull shape k = 2). Pooled over
+      every listing, the curve flattens and says k = {{K0}}: fragile products run out early, so the long runs belong to sturdy
+      ones. A survival model with a per-listing frailty term, leaving each step free, follows the planted curve
+      (k̂ = {{KV3}}; with the Weibull form, {{K2}}).</p>
+    <div class="panel">
+      <div class="legend">
+        <span><i class="sw rule"></i>planted, k = 2</span>
+        <span><i class="sw dot"></i>frailty model, one free step per clock value (95% interval)</span>
+        <span><i class="sw rule o"></i>pooled observed hazard</span>
+      </div>
+      <div class="chart">{{HAZARD}}</div>
+      <details><summary>Show the numbers</summary>{{HAZ_TABLE}}</details>
+    </div>
+  </section>
+
+  <section id="decisions" aria-labelledby="h-dec">
+    <h2 id="h-dec">Decisions under the fitted dynamics</h2>
+    <p class="sub">A simulation engine reads every parameter from the saved models, and must reproduce the status quo before
+      it answers anything. Its answers are about positioning (price rank, cheapest-of-4 share, availability), never demand
+      or revenue: no order data exists. Blinkit cutting 3% gains <strong>+{{P1G}} pp</strong> of cheapest-of-4 share once
+      followers react, not the +{{P1S}} pp a static comparison suggests.</p>
+    <div class="two">
+      <div class="panel">
+        <h3>How deep must Blinkit cut?</h3>
+        <p class="note">Smallest cut to be cheapest-of-4 on 40% of a category's SKUs: a median {{MEDIAN_RATIO}}× deeper once competitors react.</p>
+        <div class="legend">
+          <span><i class="sw hollow"></i>static (competitors frozen)</span>
+          <span><i class="sw dot"></i>strategic (fitted response)</span>
+        </div>
+        <div class="chart">{{DUMBBELL}}</div>
+        <details><summary>Show the numbers</summary>{{CUT_TABLE}}</details>
+      </div>
+      <div class="panel">
+        <h3>Which stock-outs to fix first?</h3>
+        <p class="note">Same capacity, 1% of each store per snapshot. The model's priority index cuts out-of-stock exposure
+          {{PRI}}%. The intuitive "longest out first" ({{LOF}}%) does worse than random ({{RND}}%): the chance of coming back
+          rises the longer an item has been out, so the longest-out items are about to return anyway.</p>
+        <div class="chart">{{POLICY}}</div>
+        <details><summary>Show the numbers</summary>{{POL_TABLE}}</details>
+      </div>
+    </div>
+  </section>
+
+  <section id="ledger" aria-labelledby="h-ledger">
+    <h2 id="h-ledger">Every deliverable, one line each</h2>
+    <p class="sub">The headline number, what it beats, and where the full write-up lives.</p>
+    <ol class="ledger">
+      {{LEDGER}}
+    </ol>
+  </section>
+
+  <section id="cannot" aria-labelledby="h-cannot">
+    <h2 id="h-cannot">What this data cannot answer</h2>
+    <div class="cannot">
+      <p><b>Demand, sales, orders, revenue.</b> The data is supply-side only: prices, stock, delivery times, offers. The honest
+        substitutes are time until stock-out, restock time and competitive response.</p>
+      <p><b>Price elasticity.</b> Needs demand. Deliverable 9 measures how platforms respond to each other, which is a
+        different question.</p>
+      <p><b>"Category X sells out faster."</b> One real snapshot gives stock-out prevalence, which mixes how fast items run
+        out with how slowly they come back.</p>
+      <p><b>Who leads real pricing.</b> The leader and follower structure was planted in the generator. Recovering it proves
+        the method, not the market.</p>
+    </div>
+  </section>
+
+  <footer>
+    Built from the saved model outputs by <code>python scripts/build_showcase.py</code>; every number on this page is read
+    from <code>outputs/models/*/metrics.json</code>. Synthetic rows come from generator v15.1
+    (<code>docs/GENERATOR_v15_PARAMETERS.md</code>).
+  </footer>
+</main>
+
+<div id="tip" role="status" aria-live="polite" hidden></div>
+<script>
+(function () {
+  var tip = document.getElementById('tip');
+  function show(el, x, y) {
+    tip.textContent = el.getAttribute('data-tip');
+    tip.hidden = false;
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    var left = Math.min(Math.max(8, x + 14), window.innerWidth - w - 8);
+    var top = y - h - 12 < 8 ? y + 16 : y - h - 12;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  }
+  document.addEventListener('pointerover', function (e) {
+    var el = e.target.closest && e.target.closest('[data-tip]');
+    if (el) show(el, e.clientX, e.clientY);
+  });
+  document.addEventListener('pointermove', function (e) {
+    var el = e.target.closest && e.target.closest('[data-tip]');
+    if (el) show(el, e.clientX, e.clientY); else tip.hidden = true;
+  });
+  document.addEventListener('pointerout', function (e) {
+    if (e.target.closest && e.target.closest('[data-tip]')) tip.hidden = true;
+  });
+  document.addEventListener('focusin', function (e) {
+    var el = e.target.closest && e.target.closest('[data-tip]');
+    if (!el) return;
+    var r = el.getBoundingClientRect();
+    show(el, r.left + r.width / 2, r.top);
+  });
+  document.addEventListener('focusout', function () { tip.hidden = true; });
+})();
+</script>
