@@ -172,7 +172,7 @@ instead of demand, competitive price response instead of elasticity, restock int
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
     raw[("data/raw<br/>610,789 rows<br/>frozen · sha256")] --> feat["Feature layer<br/>109 columns, past-only<br/>leakage check every run"]
     feat --> gate{"Data contracts<br/>21 invariants"}
     gate -- hold --> models["Models 1-10<br/>each against its baselines"]
