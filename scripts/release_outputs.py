@@ -112,7 +112,10 @@ def main():
              f"Use it: `python scripts/fetch_outputs.py` (checks the sha256, writes data/ml/ and outputs/).\n\n"
              f"Inside: the ML feature layer (data/ml) and outputs/ (models, analyst, audits, run log, built site). "
              f"Observed and simulated results keep their tags in every file; see the README.")
-    gh('release', 'create', tag, str(zpath), '--title', f'Run outputs, {today}', '--notes', notes, '--target', 'main')
+    # gh reads "file#label": the project lives under "Project #1 ML", so pass the path relative to ROOT (gh runs there)
+    # and name the label, or gh cuts the path at the '#' and finds no file
+    asset = f'{zpath.relative_to(ROOT).as_posix()}#{zpath.name}'
+    gh('release', 'create', tag, asset, '--title', f'Run outputs, {today}', '--notes', notes, '--target', 'main')
     doc = {'tag': tag, 'asset': zpath.name, 'url': f'https://github.com/{repo}/releases/download/{tag}/{zpath.name}',
            'sha256': digest, 'bytes': size, 'files': len(members()), 'commit': commit,
            'created_utc': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'run': run}
