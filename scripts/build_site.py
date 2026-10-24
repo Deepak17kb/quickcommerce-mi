@@ -458,15 +458,24 @@ def festive() -> dict:
     return json.loads(f.read_text(encoding='utf-8'))
 
 
+PHOTO_HOSTS = ('https://images.openfoodfacts.org/', 'https://upload.wikimedia.org/')
+
+
 def photos() -> dict:
-    """Real product photos matched by scripts/fetch_product_photos.py (Open Food Facts, CC BY-SA 3.0): name|pack ->
-    the photo's address, what it shows and whose it is. Empty when the file has not been made: the page then draws."""
+    """Real product photos from scripts/fetch_product_photos.py: name|pack -> the photo's address, what it shows and
+    whose it is. Exact photos come from Open Food Facts (the 400 px one: the 200 px one looked blurred on a card);
+    `kind` marks a typical-look photo of the product's kind from Wikimedia Commons, which the page labels as such.
+    Empty when the file has not been made: the page then draws."""
     f = ROOT / 'data' / 'reference' / 'PRODUCT_PHOTOS.json'
     if not f.exists():
         return {}
-    keep = ('image', 'shows', 'source', 'license', 'credit', 'same_pack')
-    return {k: {x: v[x] for x in keep if x in v} for k, v in json.loads(f.read_text(encoding='utf-8'))['photos'].items()
-            if str(v.get('image', '')).startswith('https://images.openfoodfacts.org/')}
+    keep = ('image', 'shows', 'source', 'license', 'credit', 'same_pack', 'kind')
+    out = {}
+    for k, v in json.loads(f.read_text(encoding='utf-8'))['photos'].items():
+        v = {**v, 'image': v.get('image_large') or v.get('image', '')}
+        if v['image'].startswith(PHOTO_HOSTS):
+            out[k] = {x: v[x] for x in keep if x in v}
+    return out
 
 
 def app_icons():

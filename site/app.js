@@ -635,17 +635,23 @@
       `<stop offset="0" style="stop-color:hsl(var(--h) 72% 64%)"/><stop offset="1" style="stop-color:hsl(var(--h) 60% 44%)"/></linearGradient></defs>` +
       `<ellipse class="sh" cx="120" cy="147" rx="60" ry="7"/>${shapes[kind] || shapes.box}</svg>`;
   }
-  /* a real photo where Open Food Facts has one that matched strictly (scripts/fetch_product_photos.py), over the drawn
-     packshot, which shows again if the photo cannot load. The tooltip says what the photo shows and whose it is. */
+  /* a photo over the drawn packshot, which shows again if the photo cannot load (scripts/fetch_product_photos.py).
+     Two sorts: the product itself, where Open Food Facts has it under a strict match, or a typical-look photo of the
+     product's kind from Wikimedia Commons (ph.kind), which fills the tile and is labelled "Typical look" so it is never
+     taken for this product's pack. The tooltip says what the photo shows and whose it is. */
   const photoOf = (name, pack) => { try { return (D('photos') || {})[`${name}|${pack || ''}`] || null; } catch (e) { return null; } };
   /* a photo shows once it has loaded and is removed if it fails, so the drawing under it is never covered by a blank */
-  const photoTag = src => `<img class="prod-photo" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('on')" onerror="this.remove()">`;
-  const photoImg = ph => photoTag(ph.image)
-    + `<span class="photo-credit" data-tip="${esc(`Photo: ${ph.shows}. Open Food Facts contributors, ${ph.license}.`)}">${ico('camera')}</span>`;
+  const photoTag = (src, kind) => `<img class="prod-photo${kind ? ' kind' : ''}" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('on')" onerror="this.remove()">`;
+  const photoTip = ph => ph.kind
+    ? `Typical look: ${ph.shows}, not this product's own pack. Photo by ${ph.credit}, ${ph.license}, Wikimedia Commons.`
+    : `Photo: ${ph.shows}. ${ph.credit || 'Open Food Facts contributors'}, ${ph.license}.`;
+  const photoImg = ph => photoTag(ph.image, ph.kind)
+    + (ph.kind ? `<span class="photo-kind">Typical look</span>` : '')
+    + `<span class="photo-credit" data-tip="${esc(photoTip(ph))}">${ico('camera')}</span>`;
   const pic = (name, cat, pack, inner) => { const ph = photoOf(name, pack);
     return `<span class="pic ps${ph ? ' has-photo' : ''}" style="--h:${hueOf(name, cat)}">${packshot(name, cat, pack)}${ph ? photoImg(ph) : ''}${inner || ''}</span>`; };
   const thumb = (name, cat, pack) => { const ph = photoOf(name, pack);
-    return `<span class="thumb ps${ph ? ' has-photo' : ''}" style="--h:${hueOf(name, cat)}">${packshot(name, cat, pack)}${ph ? photoTag(ph.image) : ''}</span>`; };
+    return `<span class="thumb ps${ph ? ' has-photo' : ''}" style="--h:${hueOf(name, cat)}"${ph ? ` data-tip="${esc(photoTip(ph))}"` : ''}>${packshot(name, cat, pack)}${ph ? photoTag(ph.image, ph.kind) : ''}</span>`; };
 
   /* one listing as a product card: its Blinkit price, the best of the other three, and how fast it arrives */
   function productCard(c, i, pick) {
@@ -801,10 +807,14 @@
   function photoCredits() {
     let ph = {};
     try { ph = D('photos') || {}; } catch (e) { ph = {}; }
-    const list = Object.values(ph);
+    const all = Object.values(ph), exact = all.filter(x => !x.kind);
+    const kinds = [...new Map(all.filter(x => x.kind).map(x => [x.image, {...x, n: all.filter(y => y.image === x.image).length}])).values()];
+    const row = (x, note) => `<li><span class="thumb ps has-photo">${photoTag(x.image, x.kind)}</span><span>${esc(x.shows)}${note}<span class="fine"> · ${esc(x.credit || 'Open Food Facts contributors')}, ${esc(x.license || 'CC BY-SA 3.0')} · <a href="${esc(x.source)}" target="_blank" rel="noopener noreferrer">source</a></span></span></li>`;
     return `<h2>Product photos ${chip('EXTERNAL')}</h2>
-      <p class="sub">${list.length ? `${list.length} product${list.length === 1 ? ' shows a photo' : 's show a photo'}` : 'No product shows a photo yet'} from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">Open Food Facts</a>, an open database whose photos anyone may reuse with credit (CC BY-SA 3.0). A photo is used only when the brand and the product name match ours closely; its caption says exactly what it shows, which can be another pack size of the same product. Everything else keeps a drawn picture. Photos from Google Images or from the apps themselves are not used: they belong to the brands and the apps, and copying them is not allowed.</p>
-      ${list.length ? `<div class="panel"><ul class="credits">${list.map(x => `<li><span class="thumb ps has-photo">${photoTag(x.image)}</span><span>${esc(x.shows)}${x.same_pack ? '' : ' <span class="pill">another pack size</span>'}<span class="fine"> · ${esc(x.credit || 'Open Food Facts contributors')}, ${esc(x.license || 'CC BY-SA 3.0')} · <a href="${esc(x.source)}" target="_blank" rel="noopener noreferrer">source</a></span></span></li>`).join('')}</ul></div>` : ''}`;
+      <p class="sub">${exact.length ? `${exact.length} product${exact.length === 1 ? ' shows its own photo' : 's show their own photo'}` : 'No product shows its own photo yet'}, from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">Open Food Facts</a>, an open database whose photos anyone may reuse with credit (CC BY-SA 3.0). Such a photo is used only when the brand and the product name match ours closely; its caption says exactly what it shows, which can be another pack size of the same product.</p>
+      ${exact.length ? `<div class="panel"><ul class="credits">${exact.map(x => row(x, x.same_pack ? '' : ' <span class="pill">another pack size</span>')).join('')}</ul></div>` : ''}
+      <p class="sub">${all.length - exact.length} more products show a <b>typical look</b>: a photo of their kind (kaju katli, marigold garlands, sweet corn) from <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>, under each photo's own free licence. The photo is labelled "Typical look" and is not the product's own pack. Each one was chosen by eye, with no brand on it; a kind whose free photos all show another brand keeps the drawn picture, as does everything else. Photos from Google Images or from the apps themselves are not used: they belong to the brands and the apps, and copying them is not allowed.</p>
+      ${kinds.length ? `<div class="panel"><ul class="credits">${kinds.map(x => row(x, ` <span class="pill">${x.n} product${x.n === 1 ? '' : 's'}</span>`)).join('')}</ul></div>` : ''}`;
   }
 
   PAGES.models = v => {

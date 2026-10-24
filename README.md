@@ -91,7 +91,7 @@ fast does it arrive**. It answers them with a pipeline that runs from raw observ
 - Hover a product and it lifts, its picture turns and the add button rises; a light follows the pointer across the
   mode cards; sections ease in as you scroll; headline numbers count up. All of it switches off for anyone whose
   system asks for reduced motion.
-- Real product photos from [Open Food Facts](https://world.openfoodfacts.org) (openly licensed, CC BY-SA, credited on the Data & trust page), used only when brand and name match closely; every other product keeps a picture drawn from its name, pack and category. Photos from Google or the apps themselves are not used: they belong to the brands and the apps.
+- Real product photos from [Open Food Facts](https://world.openfoodfacts.org) (openly licensed, CC BY-SA, credited on the Data & trust page), used only when brand and name match closely. Where none exists, a photo of the product's kind (kaju katli, marigold garlands, sweet corn) from [Wikimedia Commons](https://commons.wikimedia.org), each chosen by eye with no brand on it, free-licensed, credited, and labelled "Typical look" on the card. Everything else keeps a picture drawn from its name, pack and category. Photos from Google or the apps themselves are not used: they belong to the brands and the apps.
 - New here? Home opens with three things to try, and every Simulate and Optimize page has a three-step guide and a "what do these words mean?" glossary.
 </details>
 

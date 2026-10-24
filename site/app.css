@@ -990,6 +990,13 @@ details.more > summary:hover { color: var(--ink); }
 .photo-credit { position: absolute; right: 8px; bottom: 8px; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(17,18,22,.55); color: #fff; }
 .photo-credit svg { width: 12px; height: 12px; }
 .ps:not(:has(.prod-photo.on)) .photo-credit { display: none; }   /* credit a photo only while one shows */
+/* a typical-look photo of the product's kind (Wikimedia Commons, 2026-10-24) is a scene, not a pack on white: it fills
+   the tile, and a label says what it is wherever there is room for one */
+.prod-photo.kind { inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; background: none; }
+.thumb .prod-photo.kind { inset: 0; width: 100%; height: 100%; }
+.photo-kind { position: absolute; left: 8px; top: 8px; z-index: 1; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  line-height: 18px; background: rgba(17,18,22,.62); color: #fff; letter-spacing: .01em; pointer-events: none; }
+.ps:not(:has(.prod-photo.on)) .photo-kind { display: none; }
 
 /* ---------- a first-visit guide on Home, and the photo credits on Data & trust (2026-10-23) */
 .welcome { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 0 0 var(--gap); padding: 18px 22px; border-radius: 20px; background: var(--card); border: 1.5px dashed color-mix(in srgb, var(--pop) 80%, var(--ink) 10%); box-shadow: var(--shadow); }

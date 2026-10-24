@@ -3,6 +3,7 @@ complete, deployable site and nothing else; the README's badges are shields.io d
 import hashlib
 import importlib.util
 import json
+import re
 import zipfile
 
 import pytest
@@ -158,6 +159,44 @@ IMG = {'image_front_small_url': 'https://images.openfoodfacts.org/x.jpg'}
 def test_photo_matcher_takes_the_product_or_nothing(ours, hit, ok):
     P = _script('fetch_product_photos')
     assert P.judge({'name': ours, 'pack': None}, {**IMG, **hit})['ok'] is ok
+
+
+@pytest.mark.parametrize('name, kind', [
+    ('Kaju Katli by Lal', 'kaju katli'),
+    ('Fresh Garland - Orange Marigold', 'marigold garland'),
+    ('Bella Vita Perfume Bathing Soap for Men', 'soap'),                       # a soap, though its name says perfume
+    ("MOM Dry Roasted Cashews, Almonds & Pista Nuts Mix", 'mixed nuts'),       # a mix, though its name says cashews
+    ('MOM Makhana Chikki Bar', None),                                          # a chikki, not makhana; and not peanut
+    ('Open Secret Brownie, Dry Fruits & Biscuits Gift Pack', None),            # mostly brownie
+    ('Sapphire Original Danish Chocochip Biscuits Gift Pack', None),           # chocolate chips: not plain butter cookies
+    ('Aroma Tin Scented Candle (Multicolor) by IRIS', None),                   # a tin, not a jar
+    ('Avengers Themed Birthday Decoration Kit SpecialYou', None),
+    ("IGP - Pink Teacher's Day 5 Stem Jumilia Rose Mini Bouquet", None),       # the photo is of red roses
+    ('Amul Velvett Milk Chocolate Bar', None),                                 # every free photo showed another brand
+    ('Cadbury Celebrations Assorted Chocolate Gift Pack', None),
+    ('Derm Ease Sunscreen Spray (SPF 70 PA+++)', None),
+    ('GO DESI Milk Peda with 66% Khoa by GO DESi + GO DESi Bombay Bhel with Chutney Combo', None)])
+def test_kind_photos_go_only_where_the_kind_is_plain(name, kind):
+    P = _script('fetch_product_photos')
+    k = P.kind_of(name)
+    assert (k[0] if k else None) == kind
+
+
+def test_every_kind_photo_is_a_commons_file_with_a_caption():
+    P = _script('fetch_product_photos')
+    assert len({k[0] for k in P.KINDS}) == len(P.KINDS)
+    for kind, rule, file, shows in P.KINDS:
+        assert file.startswith('File:') and shows and re.compile(rule)
+
+
+def test_saved_kind_photos_are_free_licensed_and_hosted_on_commons():
+    f = ROOT / 'data' / 'reference' / 'PRODUCT_PHOTOS.json'
+    photos = json.loads(f.read_text(encoding='utf-8'))['photos'].values()
+    kinds = [p for p in photos if p.get('kind')]
+    assert kinds
+    for p in kinds:
+        assert p['image'].startswith('https://upload.wikimedia.org/') and p['source'].startswith('https://commons.wikimedia.org/')
+        assert p['license'].lower().startswith(('cc0', 'public domain', 'cc by')) and p['credit']
 
 
 def test_photo_matcher_wants_a_photo_to_link():

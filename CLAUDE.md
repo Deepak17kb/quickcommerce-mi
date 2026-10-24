@@ -640,7 +640,18 @@ and "actual real images of products ... from Google or directly Blinkit".
   pack only matches a gift pack; captions say what the photo shows (another pack size is labelled). Food only. The
   first full run (2026-10-24) used ">= 75% of their words" with no reverse check and put a plain Dairy Milk bar on a
   Silk Heart Blush gift pack and a plain KitKat on two Rakhi gift packs; tests/test_publish.py pins those refusals.
-  Coverage is modest and refusals are deliberate (a wrong photo is worse than a drawing). Hotlinked from images.openfoodfacts.org (CSP img-src allows that host only); the drawing stays under it.
+  Coverage is modest and refusals are deliberate (a wrong photo is worse than a drawing). Hotlinked from images.openfoodfacts.org; the drawing stays under it.
+- **Typical-look photos (2026-10-24, owner: "real images not ai generated").** Open Food Facts matched 3 of 94, so a
+  product with no exact photo takes a photo of its KIND from Wikimedia Commons: `KINDS` in fetch_product_photos.py,
+  one file per kind, each looked at by eye (no brand or label visible). 82 of 145 products; licence and author are read
+  from Commons per file (CC0 / PD / CC BY / CC BY-SA only, else the script stops). The card labels it "Typical look",
+  the tooltip says it is not the product's own pack, and Data & trust credits each file. Left out on purpose because
+  every free photo showed another brand: sunscreen, face wash, namkeen, air freshener, chocolate bars and gift packs;
+  combos ('+'/'combo') take no kind photo. Refusals pinned in tests/test_publish.py. Exact OFF photos now show at
+  400 px (200 px looked blurred). The Commons API answers with thumb.wikimedia.org + tracking query; the script stores
+  the same file on upload.wikimedia.org. CSP img-src allows images.openfoodfacts.org and upload.wikimedia.org only.
+  `python scripts/fetch_product_photos.py --kinds-only` redoes the kind photos without re-searching Open Food Facts.
+  The drawn packshots are code-drawn SVG, not AI images.
 - **Runner.** `keep_awake()` (SetThreadExecutionState) stops idle sleep during a run: on 2026-10-22 at 01:42 sleep
   (Kernel-Power 42) killed step 34. A partial run (--step/--only/--from/--resume) now merges into run_all.json.
   Long runs are launched hidden (WMI, ShowWindow=0): the owner closed a visible console window once and killed a run.

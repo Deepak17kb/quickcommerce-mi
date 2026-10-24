@@ -407,9 +407,10 @@ def test_every_response_carries_the_security_headers(server):
     csp = mod.SECURITY_HEADERS['Content-Security-Policy']
     assert "connect-src 'self'" in csp and "frame-ancestors 'none'" in csp and "object-src 'none'" in csp
     assert 'https://fonts.googleapis.com' in csp and 'https://fonts.gstatic.com' in csp           # fonts
-    assert 'img-src ' + "'self' data: blob: https://images.openfoodfacts.org;" in csp          # product photos, nothing else
+    assert 'img-src ' + "'self' data: blob: https://images.openfoodfacts.org https://upload.wikimedia.org;" in csp   # product photos, nothing else
     outside = set(re.findall(r'https://[a-z0-9.-]+', csp))
-    assert outside == {'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://images.openfoodfacts.org'}
+    assert outside == {'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://images.openfoodfacts.org',
+                       'https://upload.wikimedia.org'}
     assert 'unsafe-eval' not in csp
 
 
