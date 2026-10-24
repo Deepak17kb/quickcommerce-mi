@@ -63,7 +63,7 @@ def sha256(path: Path) -> str:
 
 def pack(stamp: str) -> Path:
     OUT.mkdir(parents=True, exist_ok=True)
-    zpath = OUT / f'qcom-outputs-{stamp}.zip'
+    zpath = OUT / f'shelfpulse-outputs-{stamp}.zip'
     files = members()
     with zipfile.ZipFile(zpath, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         for p, rel in files:
