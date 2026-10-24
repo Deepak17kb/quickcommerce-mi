@@ -13,7 +13,7 @@ import pytest
 from conftest import ROOT
 
 SITE = ROOT / 'outputs' / 'site'
-PAGES = ['home', 'data', 'models', 'simulate', 'optimize', 'analyst', 'listings', 'festive', 'plan', 'pipeline']
+PAGES = ['home', 'findings', 'data', 'models', 'simulate', 'optimize', 'analyst', 'listings', 'festive', 'plan', 'pipeline']
 FONTS = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Manrope:wght@400..800&display=swap'
 
 
@@ -61,7 +61,7 @@ def test_built_site_is_self_contained_and_complete():
     html = _built()
     assert html.startswith('<!doctype html>') and '__DATA__' not in html and '/*__' not in html
     blocks = dict(re.findall(r'<script type="application/json" id="d-(\w+)">(.*?)</script>', html, flags=re.S))
-    assert set(blocks) == {'meta', 'models', 'optimize', 'pipeline', 'whatif', 'explorer', 'reality', 'analyst', 'analystEval', 'festive', 'photos'}
+    assert set(blocks) == {'meta', 'models', 'optimize', 'pipeline', 'whatif', 'explorer', 'reality', 'analyst', 'analystEval', 'festive', 'photos', 'findings'}
     data = {k: json.loads(v) for k, v in blocks.items()}                     # every block is valid JSON
     assert data['meta']['rows'] == 610_789 and len(data['models']) == 10
     assert sum(m['real'] for m in data['meta']['mix']) == 21_949              # only Blinkit has real rows
@@ -85,8 +85,10 @@ def test_site_keeps_the_two_tags_while_dropping_the_two_words():
     models = json.loads(blocks['models'])
     assert {m['data'] for m in models} == {'REAL', 'SYNTHETIC'} and sum(m['data'] == 'REAL' for m in models) == 3
     app = (ROOT / 'site' / 'app.js').read_text(encoding='utf-8')
-    assert "if (p === 'REAL') return ''" in app and "SYNTHETIC: ['is-lab', 'flask', 'Lab']" in app   # observed: no tag
-    assert 'Seen 10 Jul' not in app                                   # the observed tag is gone (owner, 2026-10-24)
+    # observed numbers carry an "Observed" badge again (owner, 2026-10-24, second request of the day: a missing tag is
+    # not read as a meaning); still no date on it, so "10 Jul" stays off the pages
+    assert "REAL: ['is-obs', 'eye', 'Observed']" in app and "SYNTHETIC: ['is-lab', 'flask', 'Lab']" in app
+    assert 'Seen 10 Jul' not in app
     assert '/* plain:start */' in app and '/* plain:end */' in app
     meta = json.loads(blocks['meta'])
     shown = meta['suggested']
@@ -331,7 +333,7 @@ def test_built_site_has_what_phones_and_tablets_need():
         with Image.open(SITE / name) as im:
             assert im.size == (size, size), name
     m = json.loads((SITE / 'manifest.webmanifest').read_text(encoding='utf-8'))
-    assert m['short_name'] == 'Qcom' and m['display'] == 'standalone' and {i['sizes'] for i in m['icons']} == {'192x192', '512x512'}
+    assert m['short_name'] == 'ShelfPulse' and m['display'] == 'standalone' and {i['sizes'] for i in m['icons']} == {'192x192', '512x512'}
     css = (ROOT / 'site' / 'app.css').read_text(encoding='utf-8')
     for rule in ('-webkit-backdrop-filter', '100dvh', 'env(safe-area-inset-left', '@media (pointer: coarse)', '@media (hover: none)',
                  '@supports not (color: color-mix('):

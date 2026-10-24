@@ -1,14 +1,17 @@
 <div align="center">
 
-<a href="https://deepak17kb.github.io/quickcommerce-mi/"><img src="docs/assets/banner.svg" alt="Qcom: who is cheapest, what is in stock, how fast it arrives" width="100%"></a>
+<a href="https://deepak17kb.github.io/quickcommerce-mi/"><img src="docs/assets/banner.svg" alt="ShelfPulse: one day of Blinkit, collected by hand, and what it revealed" width="100%"></a>
 
-# Qcom · Quick-Commerce Market Intelligence
+# ShelfPulse · Quick-Commerce Market Intelligence
 
-**Price, stock and delivery-time intelligence across Blinkit, Swiggy Instamart, Flipkart Minutes and BigBasket in
-Bhubaneswar.** An end-to-end data-science project: a leakage-safe feature layer, thirteen models and decision tools,
-an AI analyst that cites a source for every claim, and a storefront-style web app that runs entirely in your browser.
+**One day of Blinkit, collected by hand: 21,949 listings in Bhubaneswar, and four things the data itself revealed.**
+A data defect the anomaly detector caught on its own, stock-outs that cluster by product, prices labelled observed that
+were looked up on the web, and a store column that carries no information. One day cannot show how prices move, so a
+simulated 30-day market (the Lab) tests the rest of the engine: a leakage-safe feature layer, forecasting models held to
+baselines, a price simulator and optimiser, and an analyst that cites a source for every claim. Everything runs in a
+storefront-style web app in your browser.
 
-[![Live site](https://img.shields.io/badge/LIVE_SITE-open_Qcom-c9f24a?style=for-the-badge&labelColor=111216)](https://deepak17kb.github.io/quickcommerce-mi/)
+[![Live site](https://img.shields.io/badge/LIVE_SITE-open_ShelfPulse-c9f24a?style=for-the-badge&labelColor=111216)](https://deepak17kb.github.io/quickcommerce-mi/)
 [![CI](https://img.shields.io/github/actions/workflow/status/Deepak17kb/quickcommerce-mi/ci.yml?branch=main&style=for-the-badge&label=CI&labelColor=111216)](https://github.com/Deepak17kb/quickcommerce-mi/actions/workflows/ci.yml)
 [![Pages](https://img.shields.io/github/actions/workflow/status/Deepak17kb/quickcommerce-mi/pages.yml?branch=main&style=for-the-badge&label=deploy&labelColor=111216)](https://github.com/Deepak17kb/quickcommerce-mi/actions/workflows/pages.yml)
 
@@ -31,7 +34,7 @@ an AI analyst that cites a source for every claim, and a storefront-style web ap
 
 <br>
 
-<a href="https://deepak17kb.github.io/quickcommerce-mi/"><img src="docs/assets/home.png" alt="Qcom home page: a price board for one product across four apps, headline numbers, and the three modes" width="100%"></a>
+<a href="https://deepak17kb.github.io/quickcommerce-mi/"><img src="docs/assets/home.png" alt="ShelfPulse home page: what the observed day revealed, one day observed against thirty simulated, and the engine tested in the Lab" width="100%"></a>
 
 ## What is this?
 
@@ -49,7 +52,7 @@ fast does it arrive**. It answers them with a pipeline that runs from raw observ
    that reaches a target.
 5. **Explain:** an AI analyst that answers in plain words, shows the source of every claim, and refuses questions the
    data cannot answer.
-6. **Ship:** **Qcom**, a storefront-style website that puts all of it one click away.
+6. **Ship:** **ShelfPulse**, a storefront-style website that puts all of it one click away.
 
 > **Method quality over headline numbers.** The project's most important rule: one day of real Blinkit data was
 > observed; the 30-day, four-app panel is simulated, and every number says which it is. [Read how](#the-data-honestly).
@@ -189,7 +192,7 @@ flowchart TB
     gate -. broken .-> stop["downstream steps<br/>BLOCKED, not stale"]
     models --> sim["Simulate & Optimize<br/>validated on the status quo"]
     sim --> analyst["AI analyst<br/>every claim sourced and tagged"]
-    analyst --> site["Qcom website<br/>one self-contained file"]
+    analyst --> site["ShelfPulse website<br/>one self-contained file"]
     site --> pages(["GitHub Pages<br/>live, offline-ready"])
 ```
 
@@ -234,7 +237,7 @@ the ML layer and every model output, as one zip. Fetch it and everything works a
 
 ```bash
 python scripts/fetch_outputs.py          # data/ml + outputs/ from the latest release; refused if its sha256 differs
-python scripts/serve_site.py             # Qcom on http://localhost:8000, with the project's own Python analyst behind it
+python scripts/serve_site.py             # ShelfPulse on http://localhost:8000, with the project's own Python analyst behind it
 python -m pytest -q                      # every test
 ```
 

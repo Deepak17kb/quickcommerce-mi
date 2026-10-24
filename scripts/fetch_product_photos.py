@@ -46,7 +46,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data' / 'reference' / 'PRODUCT_PHOTOS.json'
 API = 'https://search.openfoodfacts.org/search?'
-UA = 'Qcom/1.0 (portfolio project; https://github.com/Deepak17kb/quickcommerce-mi)'
+UA = 'ShelfPulse/1.0 (portfolio project; https://github.com/Deepak17kb/quickcommerce-mi)'
 NON_FOOD = {'Personal Care', 'Home & Cleaning', 'Baby Care', 'Pet Supplies', 'Electronics & Stationery', 'Fashion & Lifestyle',
             'Kitchen & Dining', 'Other / General Merchandise', 'Health & Wellness'}
 GENERIC = {'the', 'and', 'with', 'of', 'in', 'for', 'a', 'pack', 'combo', 'new', 'premium', 'classic', 'original', 'flavour',

@@ -1,6 +1,7 @@
-# Qcom, the website
+# ShelfPulse, the website
 
-Ten pages and a floating analyst, built from saved outputs only and served on localhost. The site is called Qcom.
+Eleven pages (seven in the menu, four under "More") and a floating analyst, built from saved outputs only and served on
+localhost. The site is called ShelfPulse (it was Qcom until 2026-10-24).
 
 ```
 python scripts/serve_site.py      # http://localhost:8000 (opens the browser; rebuilds first if the sources changed)

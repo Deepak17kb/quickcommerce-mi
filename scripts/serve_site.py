@@ -257,7 +257,7 @@ def lan_setup(port, ips=None) -> dict:
 
 UNLOCK_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111216">
-<title>Qcom · enter the code</title><style>
+<title>ShelfPulse · enter the code</title><style>
 *{box-sizing:border-box}body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px;background:#111216;color:#f4f5f7;
 font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}.card{width:min(380px,100%);background:#1b1d23;border-radius:22px;padding:28px;
 box-shadow:0 30px 80px rgba(0,0,0,.45)}.logo{width:46px;height:46px;border-radius:14px;background:#c9f24a;display:grid;place-items:center;margin-bottom:14px}
@@ -266,13 +266,13 @@ letter-spacing:.32em;text-align:center;padding:14px;border-radius:14px;border:1.
 button{margin-top:14px;width:100%;padding:15px;border:0;border-radius:14px;background:#c9f24a;color:#1b2500;font:800 17px system-ui,sans-serif;cursor:pointer}
 #m{min-height:1.5em;color:#ff8a8f;font-size:14px;margin-top:12px}</style></head><body>
 <form class="card" id="f" autocomplete="off"><div class="logo"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#1b2500"/></svg></div>
-<h1>Qcom</h1><p>Enter the six-digit code shown on the computer running Qcom.</p>
+<h1>ShelfPulse</h1><p>Enter the six-digit code shown on the computer running ShelfPulse.</p>
 <input id="c" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-label="Six-digit code" autofocus>
-<button type="submit">Open Qcom</button><div id="m" role="status"></div></form>
+<button type="submit">Open ShelfPulse</button><div id="m" role="status"></div></form>
 <script>document.getElementById('f').addEventListener('submit', function (e) { e.preventDefault(); var m = document.getElementById('m'); m.textContent = '';
 fetch('api/unlock', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code: document.getElementById('c').value})})
 .then(function (r) { if (r.ok) { location.reload(); return null; } return r.json().then(function (j) { m.textContent = j.error || 'That code did not work.'; }); })
-.catch(function () { m.textContent = 'Could not reach Qcom. Is it still running on the computer?'; }); });</script></body></html>"""
+.catch(function () { m.textContent = 'Could not reach ShelfPulse. Is it still running on the computer?'; }); });</script></body></html>"""
 
 
 def needs_live_chain(question: str) -> bool:
@@ -452,7 +452,7 @@ class Handler(BaseHTTPRequestHandler):
             self._drain()
         if state == 'host':
             return self._json(403, {'error': 'this server answers on localhost only'})
-        return self._json(403, {'error': 'enter the code shown on the computer running Qcom first'})
+        return self._json(403, {'error': 'enter the code shown on the computer running ShelfPulse first'})
 
     def do_GET(self):
         return self._guarded(self._get)
@@ -462,7 +462,7 @@ class Handler(BaseHTTPRequestHandler):
         state = self._gate()
         if state == 'host':
             return self._refuse(state)
-        if path in STATIC:                                   # the icons and the manifest a phone needs to add Qcom to its home screen
+        if path in STATIC:                                   # the icons and the manifest a phone needs to add ShelfPulse to its home screen
             f = SITE.parent / STATIC[path][0]
             if not f.exists():
                 return self._json(404, {'error': 'not found'})
@@ -708,7 +708,7 @@ def main():
     ap.add_argument('--rebuild', action='store_true', help='rebuild the site before serving it')
     ap.add_argument('--verbose', action='store_true', help='log every request')
     ap.add_argument('--lan', action='store_true',
-                    help='also open Qcom to phones and tablets on the same Wi-Fi, behind a six-digit code shown here')
+                    help='also open ShelfPulse to phones and tablets on the same Wi-Fi, behind a six-digit code shown here')
     ap.add_argument('--public', action='store_true',
                     help='run as a read-only public server (a host such as Render): $PORT, any Host, CORS for the live site')
     ap.add_argument('--host', default=None, help='public mode: the address to bind (default 0.0.0.0)')
@@ -736,7 +736,7 @@ def main():
     url = f'http://localhost:{port}/'
     if port != args.port:
         print(f'port {args.port} is in use; using {port}', flush=True)
-    print(f'Qcom is running at {url}   (Ctrl+C to stop)', flush=True)
+    print(f'ShelfPulse is running at {url}   (Ctrl+C to stop)', flush=True)
     if args.lan:
         LAN = lan_setup(port)
         if LAN['urls']:
@@ -746,7 +746,7 @@ def main():
             print(f'and enter the code  {LAN["code"]}', flush=True)
             print('If nothing loads there, allow Python through the firewall for private networks when Windows asks.\n', flush=True)
         else:
-            print('No Wi-Fi or network address found: only this computer can open Qcom.', flush=True)
+            print('No Wi-Fi or network address found: only this computer can open ShelfPulse.', flush=True)
     threading.Thread(target=warm, daemon=True).start()
     if not args.no_open:
         threading.Timer(0.8, webbrowser.open, [url]).start()
@@ -771,7 +771,7 @@ def main_public(args):
     port = int(os.environ.get('PORT') or args.port)
     srv = make_server(port, host=args.host or '0.0.0.0')
     srv.verbose = True if args.verbose or os.environ.get('QCOM_VERBOSE') else False
-    print(f'Qcom public and read-only on {srv.server_address[0]}:{srv.server_address[1]}; '
+    print(f'ShelfPulse public and read-only on {srv.server_address[0]}:{srv.server_address[1]}; '
           f'pages that may ask it questions: {", ".join(sorted(origins))}', flush=True)
     threading.Thread(target=warm, daemon=True).start()
     try:

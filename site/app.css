@@ -1042,3 +1042,62 @@ details.more > summary:hover { color: var(--ink); }
 body.touring #fab { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #tour-spot { transition: none; } #tour-card { animation: none; } }
 html.still #tour-spot { transition: none; } html.still #tour-card { animation: none; }
+
+/* ---------- findings first (a tech lead's review, 2026-10-24): the Observed tag, the "More" menu, the findings board on
+   Home, the 1-day/30-day strip, the Findings page, and a model's next step */
+.chip.is-obs { background: var(--good-bg); color: var(--good); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--good) 35%, transparent); }
+.nav .more-btn { display: inline-flex; align-items: center; gap: var(--s2); font: 700 14px var(--sans); color: var(--ink-2); background: none; border: 0;
+  padding: 8px 14px; border-radius: 999px; white-space: nowrap; cursor: pointer; flex: none; }
+.nav .more-btn svg { width: 16px; height: 16px; }
+.nav .more-btn:hover, .nav .more-btn[aria-expanded="true"] { background: var(--soft); color: var(--ink); }
+.nav .more-btn.on { background: var(--btn); color: var(--btn-ink); }
+.more-menu { position: absolute; z-index: 40; min-width: 220px; display: grid; gap: 2px; padding: 6px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 16px; box-shadow: var(--lift); }
+.more-menu[hidden] { display: none; }
+.more-menu a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--ink); text-decoration: none; font: 700 14px var(--sans); }
+.more-menu a svg { width: 16px; height: 16px; color: var(--ink-2); }
+.more-menu a:hover, .more-menu a:focus-visible { background: var(--soft); outline: none; }
+.more-menu a[aria-current="page"] { background: var(--btn); color: var(--btn-ink); } .more-menu a[aria-current="page"] svg { color: inherit; }
+
+.hero h1 { font-size: clamp(34px, 4.2vw, 56px); max-width: 17ch; }
+.fxboard { display: grid; gap: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px 24px 18px; text-decoration: none; color: var(--ink);
+  box-shadow: var(--lift); transition: transform .2s, box-shadow .2s, border-color .2s; }
+.fxboard:hover { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); transform: translateY(-2px); }
+.fx-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .fx-head b { font: 800 17px var(--display); }
+.fx-row { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+.fx-big { font: 800 26px/1 var(--display); letter-spacing: -.02em; color: var(--good); white-space: nowrap; }
+.fx-t { display: grid; gap: 2px; } .fx-t b { font: 700 14.5px/1.35 var(--sans); } .fx-t i { font-style: normal; font-size: 12.5px; color: var(--muted); }
+.fx-go { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font: 700 13.5px var(--sans); color: var(--ink); }
+.fx-go svg { width: 15px; height: 15px; transition: transform .2s; } .fxboard:hover .fx-go svg { transform: translateX(3px); }
+
+.days-strip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-areas: "text cells" "text legend"; gap: 10px 32px; align-items: center; margin-bottom: var(--gap); }
+.ds-text { grid-area: text; display: grid; gap: 6px; } .ds-text b { font: 800 20px var(--display); } .ds-text span { color: var(--ink-2); font-size: 14px; line-height: 1.55; }
+.ds-cells { grid-area: cells; display: grid; grid-template-columns: repeat(31, minmax(0, 1fr)); gap: 4px; }
+.ds-cells i, .ds-legend i { display: block; height: 30px; border-radius: 5px; }
+.ds-cells i.obs, .ds-legend i.obs { background: var(--good); }
+.ds-cells i.sim, .ds-legend i.sim { background: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 6px); box-shadow: inset 0 0 0 1px var(--line); }
+.ds-legend { grid-area: legend; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--ink-2); }
+.ds-legend span { display: inline-flex; align-items: center; gap: 8px; } .ds-legend i { width: 14px; height: 14px; border-radius: 4px; }
+
+.findings { display: grid; gap: var(--gap); }
+.finding { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 28px; }
+.fi-num { display: grid; align-content: start; justify-items: start; gap: 6px; }
+.fi-i { font: 700 12px var(--mono); color: var(--muted); }
+.fi-big { font: 800 clamp(40px, 4.4vw, 58px)/1 var(--display); letter-spacing: -.03em; color: var(--good); }
+.fi-cap { font-size: 13.5px; color: var(--ink-2); margin-bottom: 4px; }
+.fi-body h3 { font: 800 22px/1.25 var(--display); margin: 0 0 10px; letter-spacing: -.01em; }
+.fi-body > p { color: var(--ink-2); line-height: 1.65; margin: 0 0 14px; max-width: 74ch; }
+.fi-body .fi-why { display: grid; gap: 4px; padding: 12px 16px; border-radius: 14px; background: var(--soft); color: var(--ink); }
+.fi-body .fi-why b { font: 700 11.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.fi-viz { margin: 4px 0 14px; } .fi-bars { margin: 4px 0 14px; }
+.fill.hot { background: linear-gradient(90deg, color-mix(in srgb, var(--good) 55%, transparent), var(--good)); }
+.fi-more { display: inline-flex; align-items: center; gap: 6px; font: 700 14px var(--sans); color: var(--ink); }
+.fi-more svg { width: 15px; height: 15px; }
+.mrow .next { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--pop-soft); font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.mrow .next svg { width: 15px; height: 15px; flex: none; margin-top: 2px; }
+@media (max-width: 900px) {
+  .finding { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 22px; }
+  .days-strip { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "cells" "legend"; }
+  .ds-cells { gap: 2px; } .ds-cells i { height: 22px; border-radius: 3px; }
+}
+@media (max-width: 520px) { .fx-row { grid-template-columns: 86px minmax(0, 1fr); } .fx-big { font-size: 22px; } }

@@ -1,9 +1,9 @@
-/* sw.js — Qcom keeps working offline once it has loaded (on a phone in a lift, on a train).
+/* sw.js — ShelfPulse keeps working offline once it has loaded (on a phone in a lift, on a train).
    Network first: an online visit always gets the newest build, and the copy kept here is used only when the network
    fails. Questions to the local server (/api/...) and other sites (fonts) are never cached: they pass straight through.
    Registered by app.js on https and on localhost only; opened from disk, the page runs without it. */
 'use strict';
-const CACHE = 'qcom-v1';
+const CACHE = 'shelfpulse-v1';
 const SHELL = ['./', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

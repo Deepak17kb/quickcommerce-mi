@@ -88,7 +88,7 @@ attempt('analyst.js', () => new Function(scripts[0])());
 attempt('app.js', () => new Function(scripts[1])());
 
 const view = fake('#view');
-const pages = ['home', 'data', 'models', 'simulate', 'optimize', 'analyst', 'listings', 'festive', 'plan', 'pipeline'];
+const pages = ['home', 'findings', 'data', 'models', 'simulate', 'optimize', 'analyst', 'listings', 'festive', 'plan', 'pipeline'];
 const FEST = JSON.parse(dataBlocks.festive);
 const drawn = {};
 for (const page of pages) {

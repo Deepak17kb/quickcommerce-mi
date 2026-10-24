@@ -664,8 +664,42 @@ and "actual real images of products ... from Google or directly Blinkit".
 - **Runner.** `keep_awake()` (SetThreadExecutionState) stops idle sleep during a run: on 2026-10-22 at 01:42 sleep
   (Kernel-Power 42) killed step 34. A partial run (--step/--only/--from/--resume) now merges into run_all.json.
   Long runs are launched hidden (WMI, ShowWindow=0): the owner closed a visible console window once and killed a run.
-- **No tag on observed numbers (2026-10-24).** The owner asked for the observed-data tag and the day's date off the pages, and the
+- **No tag on observed numbers (2026-10-24; reversed the same day, see section 16).** The owner asked for the observed-data tag and the day's date off the pages, and the
   two Home tiles "seen on Blinkit on one day" / "simulated, and tagged Lab" removed. `chip('REAL')` now renders nothing:
   the Lab tag alone marks simulated numbers, so an untagged number is Blinkit's own (Data & trust says so in its tag
   table). site_smoke.js fails on "10 Jul" anywhere a visitor reads, except their own typed question. Analyst answers
   about the data keep their as-of date in ISO form (2026-07-10): it is part of the answer, not a label.
+
+## 16. Findings first, 2026-10-24 (evening): settled facts, do not re-derive
+
+The owner asked for a critique "as a tech lead from Amazon" and then for every point of it fixed. What changed:
+
+- **Name.** The site is **ShelfPulse** ("Qcom" is Qualcomm's ticker). Renamed in the pages, manifest, server, launchers,
+  README, banner and service-worker cache (`shelfpulse-v1`; the old cache is dropped on activate). Product exports are
+  named shelfpulse-products-*.json; the import never checked the app name, so older Qcom exports still import.
+- **Home leads with the observed day, not the Lab.** Hero: "One day of Blinkit, collected by hand. Here is what it
+  revealed." with a findings card; then a 1-observed / 30-simulated strip; tiles count the 21,949 observed listings, not
+  the 610,789 rows; then "The engine, tested in the Lab". The Lab product shelf, the welcome box and the festival
+  banner left Home (shelf on Products; festivals under More). The ticker leads with the findings; the Lab
+  cheapest-of-four line is gone from it.
+- **Findings page (#findings), REAL only.** `obsFindings()` in app.js, four findings, all from saved outputs:
+  the anomaly detector's top 100 flags are 70% the pack-size defect (819 rows, base 3.7%), with the most unusual
+  example named (Hommade Coconut Milk 200 ml at Rs 89 read as Rs 89 per ml); stock-outs cluster (47.1% vs 7.4%, 6.4x;
+  10.1% shuffled within category; same product in different places or different moments cannot be told); 27 prices
+  were web-researched (14 Blinkit pages, 13 other sites); the store column: 0 of 10 permutation tests after Bonferroni.
+  The defect and web-price numbers come from the new `findings` block (`build_site.findings()`).
+- **"Observed" tag is back** (`chip('REAL')` -> green "Observed", eye icon), reversing the morning's "no tag": a
+  missing tag was not read as a meaning. Still no date on it; "10 Jul" stays banned.
+- **Menu.** Seven up front (Home, Findings, Products, Simulate, Optimize, Analyst, Models); Data & trust, Pipeline,
+  Festive planner and "Collection plan" (the plan page) under a "More" menu that hangs from the header (`#more-menu`,
+  outside the nav strip, which scrolls sideways on phones). The More button shows the open page's name when it is one.
+- **No internal plumbing on the pages.** plain() drops "(CLAUDE.md s.x)" citations and calls any other mention "project
+  notes"; srcLabel maps CLAUDE.md to "project notes"; contract references go through plain(); a raw row key
+  (BASELINE_... | BBSR-... | MASTER-...) is shown as "one row" with the key kept in the tooltip. A scan of every
+  page and three analyst answers found none left.
+- **Models.** The three observed-data models come first; "Does the data back it? In the Lab only." is no longer
+  repeated on seven cards (the Lab tag and the lede say it once); the matcher shows its next step from
+  MATCH_REVIEW_PRIORITY.csv (297 pairs, 0 labelled). Labelling is still the owner's job: no label is guessed.
+- **Tour.** Home -> Findings -> Products -> Simulate -> Optimize -> Analyst -> Data & trust (Festive dropped).
+- **README** banner and intro tell the same story; README pictures regenerated with scripts/readme_assets.py.
+

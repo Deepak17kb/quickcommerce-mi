@@ -170,8 +170,9 @@ async function main() {
     await shot('52-palette-light', {viewport: true});
     await run(`document.getElementById('pal-q').dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); await new Promise(r => setTimeout(r, 450));
       if (!document.getElementById('pal').hidden || location.hash !== '#festive') throw new Error('Enter did not open the festival: ' + location.hash);`);
-    // hover: a product card lifts, its picture turns, the basket button rises
-    await go('home');
+    // hover: a product card lifts, its picture turns, the basket button rises (the shelf is on Products since Home
+    // leads with the findings, 2026-10-24)
+    await go('listings');
     const card = await run(`const el = document.querySelector('.shelf:not(.yours) .pcard'); el.scrollIntoView({block: 'center'}); await new Promise(r => setTimeout(r, 250));
       const b = el.getBoundingClientRect(); return {x: b.left + b.width / 2, y: b.top + b.height / 2};`);
     await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: card.x, y: card.y});
@@ -218,7 +219,7 @@ async function main() {
     await run(`const i = document.getElementById('a-input'); i.value = 'What is Blinkit revenue?'; document.getElementById('a-form').requestSubmit();`);
     await sleep(300); await answered();
     await shot('12-analyst-light');
-    for (const [p, n] of [['models', '13'], ['data', '14'], ['plan', '15'], ['pipeline', '16']]) { await go(p); await shot(`${n}-${p}-light`); }
+    for (const [p, n] of [['models', '13'], ['data', '14'], ['plan', '15'], ['pipeline', '16'], ['findings', '16b']]) { await go(p); await shot(`${n}-${p}-light`); }
     await go('home'); await click('#fab');
     await run(`const i = document.getElementById('dock-input'); i.value = 'Out-of-stock rate by category on 10 Jul'; document.getElementById('dock-form').requestSubmit();`);
     await sleep(300); await answered();
@@ -250,7 +251,7 @@ async function main() {
 
     // ---- phone
     await setup(390, 844, 'light', true);
-    for (const [p, n] of [['home', '24'], ['festive', '43'], ['listings', '25'], ['simulate', '26'], ['optimize', '27'], ['analyst', '28'], ['models', '29'], ['data', '30'], ['plan', '31'], ['pipeline', '32']]) { await go(p); await shot(`${n}-${p}-phone`, {maxHeight: 4200}); }
+    for (const [p, n] of [['home', '24'], ['festive', '43'], ['listings', '25'], ['simulate', '26'], ['optimize', '27'], ['analyst', '28'], ['models', '29'], ['data', '30'], ['plan', '31'], ['pipeline', '32'], ['findings', '32b']]) { await go(p); await shot(`${n}-${p}-phone`, {maxHeight: 4200}); }
     await go('home'); await click('#fab'); await shot('33-floating-analyst-phone', {viewport: true});
     await click('#dock-close'); await click('#bk-btn'); await shot('56-basket-phone', {viewport: true}); await run(`const b = document.querySelector('#basket .bk-body'); if (!b || b.scrollWidth > b.clientWidth + 1) throw new Error('the basket runs past its edge: ' + (b && b.scrollWidth) + ' > ' + (b && b.clientWidth));`); await click('#bk-close');
     await click('#pal-btn'); await shot('57-palette-phone', {viewport: true});

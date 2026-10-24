@@ -20,7 +20,9 @@ two tags. The mapping lives in site/app.js (`plain`); scripts/site_smoke.js fail
 reaches a rendered page.
 """
 import importlib.util
+import csv
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -68,6 +70,45 @@ def scope(name: str) -> str:
 
 
 # --------------------------------------------------------------------------- blocks
+def findings() -> dict:
+    """What the observed Blinkit day itself showed, read off saved outputs only (the Findings page and Home lead with it).
+    The stock and store-label findings come from the reality block, which the page already holds; this adds the two
+    that live elsewhere: the pack-size defect the anomaly detector found, and the prices that were looked up, not seen."""
+    import pandas as pd
+    an = met('anomaly_real')
+    det = an['detector_eval_vs_known_defect']['unit_price_z (|z|)']
+    pred = pd.read_parquet(MODELS / 'anomaly_real' / 'predictions.parquet')
+    rows = len(pred)
+    top = pred.reindex(pred['unit_price_z'].abs().sort_values(ascending=False).index).head(100)
+    ex = top[top['known_pack_qty_defect'] == True].iloc[0]                    # the most unusual flag that is the defect
+    clean = lambda s: str(s).replace('**', '').strip()
+    ratio = re.search(r'([\d.]+)x', str(ex['reason']))
+    web = pd.read_csv(ROOT / 'data' / 'reference' / 'REAL_PRICE_SOURCE_AUDIT.csv')
+    other = web.loc[~web['price_is_from_blinkit'].astype(bool), 'price_source_site']
+    return {
+        'defect': {'rows': int(an['known_defect_rows']), 'observed_rows': rows, 'p_at_100': det['precision_at_100'],
+                   'base': an['known_defect_rows'] / rows,
+                   'example': {'name': clean(ex['product_name']), 'pack': clean(ex['pack_size']), 'price': float(ex['selling_price']),
+                               'unit_price': float(ex['unit_price']), 'times': float(ratio.group(1)) if ratio else None}},
+        'web': {'n': len(web), 'blinkit': int(web['price_is_from_blinkit'].astype(bool).sum()), 'other': int(len(other)),
+                'sites': sorted(other.unique().tolist())},
+    }
+
+
+def review_queue() -> str:
+    """The matcher's next step, from the labelling batch itself: how many pairs wait for a person."""
+    f = ROOT / 'data' / 'reference' / 'MATCH_REVIEW_PRIORITY.csv'
+    if not f.exists():
+        return ''
+    with f.open(encoding='utf-8', newline='') as fh:
+        rows = list(csv.DictReader(fh))
+    todo = sum(1 for r in rows if not str(r.get('label') or '').strip())
+    if not todo:
+        return f'All {len(rows)} pairs of the review batch are labelled: rerun python -m src.matching.train to measure it.'
+    return (f'Next step: {todo} of {len(rows)} pairs are queued for a person to label, at a few seconds each. '
+            'That turns this into a measured model; nothing else can.')
+
+
 def meta() -> dict:
     import src.load as L
     from src import provenance
@@ -115,7 +156,8 @@ def models() -> list:
          'result': 'Accuracy on name variation as shoppers see it is not measured: no pair has a human label yet.',
          'detail': f"Version 2 learns from constructed edits and abstains on {v2['support_on_unlabelled_real_pairs']['decisions']['abstain']:,} "
                    f"of {v2['support_on_unlabelled_real_pairs']['unlabelled_real_pairs']:,} unlabelled pairs.",
-         'supported': 'No claim until people label pairs.', 'doc': 'docs/MATCHER_v2.md'},
+         'supported': 'No claim until people label pairs.', 'doc': 'docs/MATCHER_v2.md',
+         'next': review_queue()},
         {'n': '2', 'name': 'Next price', 'data': 'SYNTHETIC', 'q': 'What will this listing cost at the next check?',
          'unit': 'Test error in rupees, lower is better',
          'bars': [['Model', pf['test']['model']['mae'], True], ['Tomorrow = today', pf['test']['baseline_naive']['mae'], False],
@@ -479,7 +521,7 @@ def photos() -> dict:
 
 
 def app_icons():
-    """Icons and a web manifest, so a phone or tablet can add Qcom to its home screen (Android: Add to Home screen;
+    """Icons and a web manifest, so a phone or tablet can add ShelfPulse to its home screen (Android: Add to Home screen;
     iPhone and iPad: Share, then Add to Home Screen). Drawn here, four times larger and scaled down for smooth edges."""
     from PIL import Image, ImageDraw
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -491,7 +533,7 @@ def app_icons():
         off = (big - 24 * k) / 2
         ImageDraw.Draw(img).polygon([(off + x * k, off + y * k) for x, y in bolt], fill=(27, 37, 0))
         img.resize((size, size), Image.LANCZOS).save(OUT_DIR / name, optimize=True)
-    manifest = {'name': 'Qcom · Quick-commerce intelligence', 'short_name': 'Qcom', 'start_url': './', 'scope': './',
+    manifest = {'name': 'ShelfPulse · Quick-commerce intelligence', 'short_name': 'ShelfPulse', 'start_url': './', 'scope': './',
                 'display': 'standalone', 'orientation': 'any', 'background_color': '#f6f7f9', 'theme_color': '#111216',
                 'icons': [{'src': f'icon-{s}.png', 'sizes': f'{s}x{s}', 'type': 'image/png', 'purpose': 'any maskable'} for s in (192, 512)]}
     (OUT_DIR / 'manifest.webmanifest').write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding='utf-8', newline='\n')
@@ -512,6 +554,7 @@ def main():
     blocks = {
         'meta': meta(), 'models': models(), 'optimize': optimize(), 'pipeline': pipeline(),
         'whatif': whatif, 'explorer': explorer, 'reality': reality, 'analyst': page_analyst, 'festive': festive(), 'photos': photos(),
+        'findings': findings(),
         'analystEval': {'browser': ev, 'python': {s: {'questions': python_eval[s]['summary']['questions'],
                                                       'passed': python_eval[s]['summary']['passed']}
                                                   for s in ('tuning_set', 'holdout_set')}},

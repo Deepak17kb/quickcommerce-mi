@@ -1,8 +1,9 @@
 /* app.js — the storefront pages. Every number is read from the JSON blocks build_site.py embeds; nothing is computed
    from raw data here. Simulate and Optimize read simulations that were run in advance and say so.
 
-   Wording: a number from the simulated 30-day panel is tagged "Lab"; one observed on Blinkit carries no tag and no date
-   (the owner asked for the observed tag and its date off the pages, 2026-10-24), so an untagged number is Blinkit's own. A
+   Wording: a number from the simulated 30-day panel is tagged "Lab"; one observed on Blinkit is tagged "Observed", with no
+   date (owner, 2026-10-24: first the observed tag and its date came off the pages, then the tag came back, because a
+   missing tag is not read as a meaning; the date stays off). A
    snapshot, as a unit of time, is a "check": one round of prices and stock, morning or evening. plain() rewrites the
    project's own labels into those words wherever project text is shown, so a number never loses its tag. */
 (function () {
@@ -25,6 +26,9 @@
     const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
     const NOUNS = '(?:rows?|snapshots?|data|records?|listings?|pairs?|days?|observations?|Blinkit (?:snapshot|rows?|listings?)|and|or)';
     return String(s == null ? '' : s)
+      // the project's working notes are not a source a reader can open: a "(CLAUDE.md s.4)" citation is dropped and
+      // any other mention reads as the project notes
+      .replace(/\s*\((?:see )?CLAUDE\.md[^)]*\)/g, '').replace(/\bCLAUDE\.md\b/g, 'project notes')
       // names of outputs, files and columns: real_store_label_audit -> observed_store_label_audit
       .replace(/query_real_snapshot/g, 'observed_query').replace(/_the_real_market/g, '_the_market')
       // (no lookbehind anywhere: Safari before 16.4 rejects the whole script over one)
@@ -66,9 +70,11 @@
     if ((m = file.match(/^outputs\/models\/([^/]+)\//))) out = 'saved result · ' + ident(m[1]);
     else if (/^data\/raw/.test(file)) out = 'the observed rows';
     else if ((m = file.match(/^docs\/external\/(.+)\.md$/))) out = 'public source notes · ' + ident(m[1]);
+    else if (/(^|\/)CLAUDE\.md$/.test(file)) out = 'project notes';
     else if ((m = file.match(/([^/]+)\.md$/))) out = 'project doc · ' + ident(m[1]);
     else out = plain(file);
-    return [out].concat(parts.slice(1).map(plain)).join(' · ');
+    // a raw row key (BASELINE_... | BBSR-007 | MASTER-18104) is named in words; the full path stays in the tooltip
+    return [out].concat(parts.slice(1).map(x => (/\b[A-Z]+_\d{4}-\d{2}-\d{2}\s*\|/.test(x) ? (/observed/i.test(x) ? 'one observed row' : 'one row') : plain(x)))).join(' · ');
   }
 
   const PATHS = {
@@ -103,12 +109,16 @@
     share: '<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1"/>',
     command: '<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/>',
     x: '<path d="M6 6l12 12M18 6 6 18"/>', play: '<path d="M7 5v14l11-7z"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+    more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   };
   const ico = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${PATHS[n] || PATHS.box}</svg>`;
-  /* the project's data labels, as the site's tags. REAL has none: whatever is not tagged Lab was observed on Blinkit */
-  const CHIPS = {SYNTHETIC: ['is-lab', 'flask', 'Lab'], METHOD: ['is-method', 'book', 'Method'],
+  /* the project's data labels, as the site's tags. Observed numbers are marked too: a tag that is missing is not read
+     as a meaning, so "Observed" says it out loud (owner, 2026-10-24). No date on it. */
+  const CHIPS = {REAL: ['is-obs', 'eye', 'Observed'], SYNTHETIC: ['is-lab', 'flask', 'Lab'], METHOD: ['is-method', 'book', 'Method'],
     EXTERNAL: ['is-source', 'link', 'Public source'], UNVERIFIED: ['is-unverified', 'alert', 'Store unverified'], USER: ['is-user', 'user', 'Added by you']};
-  const chip = p => { if (p === 'REAL') return ''; const c = CHIPS[p] || CHIPS.METHOD; return `<span class="chip ${c[0]}">${ico(c[1])}${c[2]}</span>`; };
+  const chip = p => { const c = CHIPS[p] || CHIPS.METHOD; return `<span class="chip ${c[0]}">${ico(c[1])}${c[2]}</span>`; };
   const CAT_ICON = {'Fruits & Vegetables': 'leaf', 'Beverages': 'cup', 'Personal Care': 'drop', 'Snacks & Munchies': 'bag', 'Home & Cleaning': 'spray',
     'Frozen Foods': 'snow', 'Tea, Coffee & More': 'mug'};
   const tipAttr = t => ` tabindex="0" data-tip="${pe(t)}"`;
@@ -126,9 +136,13 @@
   const LAB_NOTE = `${chip('SYNTHETIC')} Run in advance on the simulated 30-day panel. It shows what those fitted dynamics imply, not how the market itself would move, and never demand or revenue.`;
 
   /* ================================================================== header: pages, theme */
-  const NAV = [['home', 'Home', 'home'], ['listings', 'Products', 'grid'], ['festive', 'Festive planner', 'lamp'], ['simulate', 'Simulate', 'sliders', 1], ['optimize', 'Optimize', 'target', 1], ['analyst', 'Analyst', 'chat', 1],
-    ['models', 'Models', 'chart'], ['data', 'Data & trust', 'shield'], ['plan', 'Plan the panel', 'calendar'], ['pipeline', 'Pipeline', 'route']];
-  $('#nav').innerHTML = NAV.map(([p, l, i, m]) => `<a href="#${p}" data-page="${p}"${m ? ' class="mode"' : ''}>${ico(i)}${l}</a>`).join('') +
+  /* [page, label, icon, mode, under "More"]: seven pages up front, the rest one tap away (a tech lead's review,
+     2026-10-24: ten tabs read as a project that could not decide what it is) */
+  const NAV = [['home', 'Home', 'home'], ['findings', 'Findings', 'bulb'], ['listings', 'Products', 'grid'], ['simulate', 'Simulate', 'sliders', 1], ['optimize', 'Optimize', 'target', 1], ['analyst', 'Analyst', 'chat', 1],
+    ['models', 'Models', 'chart'], ['data', 'Data & trust', 'shield', 0, 1], ['pipeline', 'Pipeline', 'route', 0, 1], ['festive', 'Festive planner', 'lamp', 0, 1], ['plan', 'Collection plan', 'calendar', 0, 1]];
+  const navLink = ([p, l, i, m]) => `<a href="#${p}" data-page="${p}"${m ? ' class="mode"' : ''}>${ico(i)}${l}</a>`;
+  $('#nav').innerHTML = NAV.filter(n => !n[4]).map(navLink).join('') +
+    `<button type="button" class="more-btn" id="more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="more-menu">${ico('more')}More</button>` +
     `<span class="tools"><button type="button" class="pal-btn" id="pal-btn" aria-haspopup="dialog" aria-controls="pal" aria-label="Go anywhere (Ctrl K)">${ico('command')}<kbd>Ctrl K</kbd></button>` +
     `<button type="button" class="share" id="share" aria-label="Share a link to this page">${ico('share')}</button>` +
     `<button type="button" class="theme" id="theme" aria-label="Switch between light and dark">${ico('moon')}</button></span>`;
@@ -145,6 +159,27 @@
     setTimeout(() => root.classList.remove('theming'), 450);
   }
   $('#theme').addEventListener('click', toggleTheme);
+  /* the "More" pages open in a small menu that hangs from the header, outside the nav strip (which scrolls sideways on
+     a phone and would clip it) */
+  const moreMenu = $('#more-menu'), moreBtn = $('#more-btn');
+  if (moreMenu) moreMenu.innerHTML = NAV.filter(n => n[4]).map(([p, l, i]) => `<a href="#${p}" data-page="${p}" role="menuitem">${ico(i)}${l}</a>`).join('');
+  function moreClose() { if (moreMenu && !moreMenu.hidden) { moreMenu.hidden = true; moreBtn.setAttribute('aria-expanded', 'false'); } }
+  function moreOpen() {
+    if (!moreMenu) return;
+    const top = $('header.top'), b = moreBtn.getBoundingClientRect ? moreBtn.getBoundingClientRect() : null, t = top && top.getBoundingClientRect ? top.getBoundingClientRect() : null;
+    moreMenu.hidden = false; moreBtn.setAttribute('aria-expanded', 'true');
+    if (b && t) {
+      const w = moreMenu.offsetWidth || 220, vw = window.innerWidth || 1024;
+      moreMenu.style.top = (b.bottom - t.top + 6) + 'px';
+      moreMenu.style.left = Math.max(8, Math.min(b.left - t.left, vw - w - 8)) + 'px';
+    }
+    const first = moreMenu.querySelector('a'); if (first && first.focus) first.focus({preventScroll: true});
+  }
+  if (moreBtn) moreBtn.addEventListener('click', e => { e.stopPropagation(); if (moreMenu.hidden) moreOpen(); else moreClose(); });
+  document.addEventListener('click', e => { if (moreMenu && !moreMenu.hidden && !(e.target.closest && e.target.closest('#more-menu'))) moreClose(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && moreMenu && !moreMenu.hidden) { moreClose(); moreBtn.focus(); } });
+  window.addEventListener('resize', moreClose, {passive: true});
+  const navScroller = $('#nav'); if (navScroller) navScroller.addEventListener('scroll', moreClose, {passive: true});
 
   /* ================================================================== the analyst: the project's own when served, the page's engine otherwise */
   let engine = null, live = false;
@@ -190,15 +225,15 @@
     }).catch(() => false);
   }
   const serverKeeps = async () => (await liveReady) && writable;   // products go to a server only if it keeps them
-  /* started with --lan: this computer is shown how to open Qcom on a phone or tablet (other devices never get this) */
+  /* started with --lan: this computer is shown how to open ShelfPulse on a phone or tablet (other devices never get this) */
   function showLan(lan) {
     const pill = $('#lan-pill'), pop = $('#lan-pop');
     if (!pill || !pop) return;
-    pop.innerHTML = `<div class="lp-head"><b>Open Qcom on a phone or tablet</b><button type="button" class="linkish" id="lan-close">Close</button></div>
+    pop.innerHTML = `<div class="lp-head"><b>Open ShelfPulse on a phone or tablet</b><button type="button" class="linkish" id="lan-close">Close</button></div>
       <ol><li>Join the same Wi-Fi as this computer.</li>
         <li>Open ${lan.urls.map(u => `<code>${esc(u)}</code>`).join(' or ')} in Safari, Chrome or any browser.</li>
         <li>Enter the code <span class="lan-code">${esc(lan.code)}</span></li></ol>
-      <p class="fine">To keep it like an app: on iPhone or iPad tap Share, then Add to Home Screen; on Android open the menu, then Add to Home screen. A new code is made each time Qcom starts.</p>`;
+      <p class="fine">To keep it like an app: on iPhone or iPad tap Share, then Add to Home Screen; on Android open the menu, then Add to Home screen. A new code is made each time ShelfPulse starts.</p>`;
     pill.hidden = false;
     pill.addEventListener('click', () => { pop.hidden = !pop.hidden; });
     pop.addEventListener('click', e => { if (e.target.closest('#lan-close')) pop.hidden = true; });
@@ -207,7 +242,11 @@
     const lab = chip(c.provenance) + (c.store_label ? chip('UNVERIFIED') : '');
     const stage = c.stage ? `stage ${esc(c.stage.replace(/_/g, ' '))} · ` : '';
     const flag = c.verified === false ? `<span class="src flag">not verified: ${pe((c.issues || []).join('; '))}</span>` : '';
-    return `<li><span class="tags">${lab}</span><span>${prose(c.text)}<span class="src" title="${esc(c.source_file || '')}">${stage}${esc(srcLabel(c.source_file))}${c.source_detail ? ' · ' + pe(c.source_detail) : ''}${c.date ? ' · ' + esc(c.date) : ''}</span>${flag}</span></li>`;
+    // a raw row key (BASELINE_... | BBSR-007 | MASTER-18104) reads as noise: it is named in words, and kept in the tooltip
+    const raw = String(c.source_detail || ''), key = /\b[A-Z]+_\d{4}-\d{2}-\d{2}\s*\|/.test(raw);
+    const detail = !raw ? '' : key ? (/observed/i.test(raw) ? 'one observed row' : 'one row') : pe(raw);
+    const title = [c.source_file, key ? raw : ''].filter(Boolean).join(' · ');
+    return `<li><span class="tags">${lab}</span><span>${prose(c.text)}<span class="src" title="${esc(title)}">${stage}${esc(srcLabel(c.source_file))}${detail ? ' · ' + detail : ''}${c.date ? ' · ' + esc(c.date) : ''}</span>${flag}</span></li>`;
   }
   const NOTES = {
     lab: ['flask', '', 'Part of this answer comes from the Lab: the simulated panel. It shows what the method recovers, not how the market behaves.'],
@@ -678,55 +717,75 @@
   }
   const receipt = (title, lines, total) => `<div class="receipt"><h3>${esc(title)}</h3>${lines.map(([a, b]) => `<div class="ln"><span>${a}</span><span>${b}</span></div>`).join('')}<div class="ln total"><span>${total[0]}</span><span>${total[1]}</span></div></div>`;
 
-  /* the next festival, as a strip on the home page */
-  function festBanner() {
-    const nf = upcoming()[0];
-    if (!nf) return '';
-    const G = D('festive').groups, s = festState(nf, clamp(Math.round(+(mem.get('festive', {}).lead)) || 10, 1, 30));
-    return `<a class="fest-banner" href="#festive"><span class="fb-ico">${ico('lamp')}</span>
-      <span class="fb-t"><span class="fb-k">Festive planner · next up</span><b>${esc(nf.name)} ${s.s > 0 ? `in ${s.s} day${s.s === 1 ? '' : 's'}` : 'is on now'}</b>
-        <span>${esc(fmtD(dOf(nf.day), {weekday: 'short'}))} · have ${esc(nf.groups.slice(0, 3).map(k => G[k].label.toLowerCase()).join(', '))} on the shelf ${s.left > 0 ? 'by ' + esc(fmtD(s.by)) : 'now'}</span></span>
-      <span class="btn pop">Plan the stock ${ico('arrow')}</span></a>`;
-  }
-
   /* ================================================================== pages */
   const PAGES = {};
 
+  /* what the observed day itself showed: four findings from the hand-collected Blinkit rows, none of them simulated.
+     Home leads with them and the Findings page tells each in full (a tech lead's review, 2026-10-24: the striking
+     numbers had been the Lab's, which only give back what the simulator was built with) */
+  function obsFindings() {
+    const F = D('findings'), S = D('reality').store, d = F.defect, ex = d.example;
+    const unit = (/([a-z]+)\s*$/i.exec(ex.pack) || [])[1] || 'unit', qty = parseFloat(ex.pack) || 0;
+    const sig = S.tests.filter(t => t.p < 0.05 / S.tests.length).length;
+    const pw = (S.power || []).find(p => Math.abs(p.planted_eta_shift_minutes - 0.2) < 1e-9);
+    return [
+      {k: 'defect', big: `${Math.round(d.p_at_100 * 100)} / 100`, cap: 'top flags are one data defect',
+        t: 'The anomaly detector found a data defect on its own',
+        s: `${Math.round(d.p_at_100 * 100)} of its 100 most unusual listings share one known defect: a pack size stored as 1. ${ex.name} (${ex.pack}, ${rs(ex.price)}) then reads as ${rs(ex.unit_price)} per ${unit}${qty ? ` instead of ${rs(ex.price / qty)}` : ''}${ex.times ? `, ${int(ex.times)} times its category's median` : ''}. ${int(d.rows)} observed rows carry it; a random pick would land on one ${pct(d.base, 1)} of the time.`,
+        why: 'Every "cheapest per kg" comparison silently breaks on these rows. A check like this belongs where a catalog is loaded, before anything compares prices.', go: 'models', more: 'The detector, on Models'},
+      {k: 'stock', big: `${fix(S.stock.lift, 1)}×`, cap: 'stock-outs cluster by product',
+        t: 'Stock-outs come in clusters',
+        s: `When one record of a product is out of stock, another record of the same product is out ${pct(S.stock.cond)} of the time, against ${pct(S.stock.rate)} for any record. Shuffling stock within each category gives ${pct(S.stock.cat)}, so the category is not the reason.`,
+        why: 'Availability behaves like an event of the product, not of one listing. Whether those records are different stores or different moments, the source cannot say: that is the first thing to log next.', go: 'data', more: 'The numbers, on Data & trust'},
+      {k: 'web', big: String(F.web.n), cap: 'prices were looked up, not seen',
+        t: 'Prices labelled observed were looked up on the web',
+        s: `The source workbook marks ${F.web.n} prices as web-researched: ${F.web.blinkit} from Blinkit's own pages and ${F.web.other} from other sites, among them ${F.web.sites.slice(0, 3).join(', ')}. The raw file had labelled every one of them observed.`,
+        why: 'Provenance has to live on each value, not on the file. These are listed and left out of every statement about Blinkit prices.', go: 'data', more: 'The audit, on Data & trust'},
+      {k: 'store', big: `${sig} / ${S.tests.length}`, cap: 'tests find any store effect',
+        t: 'The store column carries no detectable information',
+        s: `${S.tests.length} permutation tests, ${int(S.permutations)} shuffles each: ${sig ? sig : 'none'} departs from a store tag drawn at random. Records of one product share a store in ${pct(S.pair.obs)} of pairs; a random tag gives ${pct(S.pair.null)}.${pw ? ` The same test spots a 0.2-minute delivery shift planted in one small store ${pct(pw.detected_share_at_5pct, 0)} of the time, so this is not a lack of power.` : ''}`,
+        why: 'Any store-level conclusion from this column would be a conclusion about noise. Test a key before you group by it.', go: 'data', more: 'Ten tests, on Data & trust'},
+    ];
+  }
+
   PAGES.home = v => {
-    const M = D('meta'), W = D('whatif'), O = D('optimize'), E = D('analystEval'), X = D('explorer');
-    const obs = M.mix.reduce((s, m) => s + m.real, 0);
+    const M = D('meta'), W = D('whatif'), O = D('optimize'), E = D('analystEval');
+    const obs = M.mix.reduce((s, m) => s + m.real, 0), sim = M.mix.reduce((s, m) => s + m.synthetic, 0);
     const a = W.cells['Blinkit|All|-3|strategic'], b = W.cells['Blinkit|All|-3|static'], oc = O.byCategory[0];
     const ev = E.browser ? E.browser.summary : null;
     const refN = ev ? ev.tuning.must_refuse + ev.holdout.must_refuse : null;
     const passN = ev ? ev.tuning.passed + ev.holdout.passed : E.python.tuning_set.passed + E.python.holdout_set.passed;
     const allN = ev ? ev.tuning.questions + ev.holdout.questions : E.python.tuning_set.questions + E.python.holdout_set.questions;
-    const f = X.chains[0];
+    const FX = obsFindings();
     const stops = [
       ['Collect', `${int(obs)} Blinkit listings`, 'collected by hand', 'data', false],
       ['Validate', M.contracts ? `${M.contracts.passed} of ${M.contracts.total} data contracts hold` : 'files hash-checked', `${M.run.passed} of ${M.run.tests} tests pass`, 'pipeline', false],
       ['Match', 'same product or not', 'accuracy waits on labels', 'models', true], ['Features', '109 columns', 'none may see the future', 'data', false],
       ['Predict', 'nine forecasting models', 'each against a baseline', 'models', false], ['Simulate', 'what if a price moves', 'checked on the status quo', 'simulate', false],
       ['Optimize', 'smallest move to a target', 'no demand, no profit', 'optimize', false], ['Analyst', 'answers with sources', `${passN} of ${allN} test questions`, 'analyst', false]];
+    const days = Array.from({length: 31}, (_, i) => `<i class="${i ? 'sim' : 'obs'}"></i>`).join('');
     v.innerHTML = `
       <div class="hero">
         <div>
-          <p class="eyebrow">${ico('bolt')}Market intelligence for quick commerce</p>
-          <h1>Who is <mark>cheapest</mark>, what is in stock, how fast it arrives</h1>
-          <p class="lede">Four apps, one city. This pipeline matches products across Blinkit, Swiggy Instamart, Flipkart Minutes and BigBasket, forecasts price, stock and delivery time, tests a price move before you make it, and answers questions with its sources shown.</p>
-          <div class="cta"><a class="btn pop" href="#simulate">${ico('sliders')}Try a price move</a><a class="btn ghost" href="#optimize">${ico('target')}Find the smallest cut</a><button class="btn ghost" type="button" data-open-dock>${ico('chat')}Ask the analyst</button><button class="btn ghost tour-btn" type="button" data-tour>${ico('play')}Take the tour</button></div>
+          <p class="eyebrow">${ico('bolt')}Price and stock intelligence for quick commerce</p>
+          <h1>One day of Blinkit, collected by hand. Here is what it <mark>revealed</mark>.</h1>
+          <p class="lede">Quick-commerce apps publish no data, so ${int(obs)} Blinkit listings in Bhubaneswar were logged by hand. The data itself turned up four things a platform team would want to know. One day cannot show how prices move, so a simulated 30-day market, the Lab, tests the forecasting and pricing engine that is ready for a longer record.</p>
+          <div class="cta"><a class="btn pop" href="#findings">${ico('bulb')}See the findings</a><button class="btn ghost tour-btn" type="button" data-tour>${ico('play')}Take the tour</button><a class="btn ghost" href="#simulate">${ico('sliders')}Try a price move</a></div>
         </div>
-        ${board(f, `price check · ${esc(f.dec.at)}`, `<p class="fine" style="margin:16px 0 0">One product, one moment, in the Lab. <a href="#listings" data-product="${esc(f.name)}">See its full story</a></p>`)}
+        <a class="fxboard" href="#findings" aria-label="What the observed day revealed: open the findings">
+          <div class="fx-head">${chip('REAL')}<b>What the observed day revealed</b></div>
+          ${FX.map(f => `<div class="fx-row"><span class="fx-big">${esc(f.big)}</span><span class="fx-t"><b>${esc(f.t)}</b><i>${esc(f.cap)}</i></span></div>`).join('')}
+          <span class="fx-go">All four, with the evidence ${ico('arrow')}</span>
+        </a>
       </div>
-      ${tiles([[int(M.rows), 'observations in total'], [M.stores, 'stores'], [int(M.products), 'catalog products'], [`${M.run.ok} of ${M.run.steps}`, 'pipeline steps passing']])}
-      ${mem.get('welcomed', 0) ? '' : `<div class="welcome" id="welcome"><div><b>New here? Three things to try</b>
-          <ol><li><a href="#listings">Tap a product</a> and see every app's price, what the models predict, and where to buy it</li>
-            <li><a href="#simulate">Try "what if"</a>: tap an app and a price change, and see who ends up cheapest</li>
-            <li><a href="#festive">Plan for the next festival</a> or special day, with what to stock and when</li></ol>
-          <p class="fine" style="margin:6px 0 0">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump anywhere, or ask the analyst in plain words.</p></div>
-          <button type="button" class="linkish" id="welcome-close" aria-label="Hide this">Got it</button></div>`}
-      ${festBanner()}
-      <h2>Pick a mode</h2>
-      <p class="sub">Three things you can do with it. Each opens on a working example.</p>
+      <div class="days-strip panel">
+        <div class="ds-text"><b>1 day observed, 30 simulated</b><span>Every number on this site says which it is: ${chip('REAL')} came from Blinkit, ${chip('SYNTHETIC')} from the simulated market.</span></div>
+        <div class="ds-cells" role="img" aria-label="31 days: the first observed by hand, the other 30 simulated">${days}</div>
+        <div class="ds-legend"><span><i class="obs"></i>${int(obs)} listings collected by hand</span><span><i class="sim"></i>${int(sim)} simulated rows across 4 apps</span></div>
+      </div>
+      ${tiles([[int(obs), 'Blinkit listings, collected by hand'], [M.stores, 'stores mapped across 4 apps'], [M.contracts ? `${M.contracts.passed} of ${M.contracts.total}` : '-', 'data contracts hold'], [`${M.run.ok} of ${M.run.steps}`, 'pipeline steps passing']])}
+      <h2>The engine, tested in the Lab ${chip('SYNTHETIC')}</h2>
+      <p class="sub">What it does once there is more than one day. In the Lab its rules are known, so every answer can be checked against the truth.</p>
       <div class="modes">
         <a class="mode-card" href="#simulate"><span class="ico">${ico('sliders')}</span><span class="k">Simulate</span><p>Move a platform's prices, run a promo or take stock away, and see who ends up cheapest over the next twelve checks.</p>
           <span class="ex">Blinkit cuts 3%: ${sgn(a.d[0][1])} pp of cheapest-of-4 share once rivals react, ${sgn(b.d[0][1])} pp if they did not.</span><span class="go">Open Simulate ${ico('arrow')}</span></a>
@@ -735,24 +794,41 @@
         <a class="mode-card" href="#analyst"><span class="ico">${ico('chat')}</span><span class="k">Analyst</span><p>Ask in plain words. It answers from the project's documents and results, tags every claim with its source, and says no when the data cannot answer.</p>
           <span class="ex">${refN == null ? '' : `Says no to ${refN} of ${refN} questions it must. `}Passes ${passN} of ${allN} test questions.</span><span class="go">Open Analyst ${ico('arrow')}</span></a>
       </div>
-      <h2>On the shelf ${chip('SYNTHETIC')}</h2>
-      <p class="sub">${X.chains.length} Blinkit listings followed end to end. Tap one to see what was predicted, what it can charge and what the optimizer suggests. <a href="#listings" data-add-product>Add your own product</a> with a photo.</p>
       <div id="home-yours"></div>
-      <div class="shelf">${X.chains.map((c, i) => productCard(c, i)).join('')}</div>
       <h2>From shelf to answer</h2>
       <p class="sub">The pipeline, tracked like an order. A hollow stop is not finished.</p>
       <div class="tracker">${stops.map(([n, x, y, pg, wait]) => `<a class="stop${wait ? ' wait' : ''}" href="#${pg}"><b>${n}</b><span>${x}</span><i>${y}</i></a>`).join('')}</div>
       <h2>Good to know</h2>
       <div class="panel"><div class="lists">
-        <div><h4>It can say</h4><ul><li>What Blinkit listed, at what price and stock status, on the day it was collected</li><li>That each method recovers what was planted in the simulated panel ${chip('SYNTHETIC')}</li><li>Who is cheapest and in stock under those fitted dynamics ${chip('SYNTHETIC')}</li></ul></div>
-        <div><h4>It cannot say</h4><ul><li>Anything about demand, sales, revenue, margin or elasticity: there are no orders in the data</li><li>How the market itself moves over time: only one day was observed</li><li>Which store listed which product: the store column is unverified</li></ul></div>
-        <div><h4>What would change that</h4><ul><li>A hand-logged panel, sized on <a href="#plan">Plan the panel</a></li><li>Human labels on product pairs</li><li>The collection record for the store column</li></ul></div>
+        <div><h4>It can say</h4><ul><li>What Blinkit listed, at what price and stock status, on the day it was collected</li><li>What that day reveals about the data itself: the four findings above</li><li>That each method recovers what was planted in the Lab ${chip('SYNTHETIC')}</li></ul></div>
+        <div><h4>It cannot say</h4><ul><li>Anything about demand, sales, revenue, margin or elasticity: there are no orders in the data</li><li>How the market itself moves over time: only one day was observed</li><li>Which store listed which product: the store column carries no detectable information</li></ul></div>
+        <div><h4>What would change that</h4><ul><li>Logging a watchlist twice a day for two weeks, sized on the <a href="#plan">collection plan</a></li><li>People labelling the product pairs the matcher has queued</li><li>The collection record for the store column</li></ul></div>
       </div></div>
-      <p class="foot-note"><b>Qcom</b> · built ${esc(M.built)} from saved outputs of the quickcommerce-mi project. Portfolio project by Deepak, B.Tech CSE (Data Science with AI), LPU.</p>`;
-    const wc = $('#welcome-close');
-    if (wc) wc.addEventListener('click', () => { mem.set('welcomed', 1); const w = $('#welcome'); if (w && w.remove) w.remove(); });
+      <p class="foot-note"><b>ShelfPulse</b> · built ${esc(M.built)} from saved outputs of the quickcommerce-mi project. Portfolio project by Deepak, B.Tech CSE (Data Science with AI), LPU.</p>`;
     homeYours();
   };
+
+  PAGES.findings = v => {
+    const M = D('meta'), FX = obsFindings(), obs = M.mix.reduce((s, m) => s + m.real, 0);
+    const det = (D('models').find(m => m.n === '6') || {}).chart;
+    v.innerHTML = `<p class="eyebrow">${ico('bulb')}Findings</p><h1 class="page">What the observed day <mark>revealed</mark></h1>
+      <p class="lede">Four findings from the ${int(obs)} Blinkit listings collected by hand. No simulation is involved in any of them, and each is rebuilt by the pipeline and tested. They are about the data a platform runs on: how it can be wrong, and what it says about availability.</p>
+      <div class="findings">${FX.map((f, i) => `<article class="finding" id="f-${f.k}">
+          <div class="fi-num"><span class="fi-i">${i + 1}</span><span class="fi-big">${esc(f.big)}</span><span class="fi-cap">${esc(f.cap)}</span>${chip('REAL')}</div>
+          <div class="fi-body"><h3>${esc(f.t)}</h3><p>${esc(f.s)}</p>
+            <p class="fi-why"><b>Why it matters</b>${esc(f.why)}</p>
+            ${f.k === 'defect' && det ? `<figure class="mviz fi-viz"><figcaption><b>${pe(det.title)}</b><span>${pe(det.note || '')}</span></figcaption>${chartFor(det)}</figure>` : ''}
+            ${f.k === 'stock' ? stockBars() : ''}
+            <a class="fi-more" href="#${f.go}">${esc(f.more)} ${ico('arrow')}</a></div>
+        </article>`).join('')}</div>
+      <div class="panel mt"><h3>What one day cannot show</h3><p class="note">How prices respond to each other, how long stock-outs last, how delivery time moves with demand: all of that needs more than one day. The engine for it is built and checked in the Lab, where the rules are known. <a href="#simulate">Try a price move</a> or see <a href="#models">how each model is held to a baseline</a>. The <a href="#plan">collection plan</a> sizes the watchlist that would let it run on Blinkit itself.</p></div>`;
+  };
+  /* the stock-out clustering as three bars: any record out, another record of the same product out, the same shuffled */
+  function stockBars() {
+    const S = D('reality').store.stock;
+    return `<div class="fi-bars">${[['Any record is out of stock', S.rate], ['Another record of the same product, given one is out', S.cond], ['The same, with stock shuffled within its category', S.cat]]
+      .map(([l, val], i) => `<div class="row"><div class="lab">${l}</div><div class="track"><i class="fill${i === 1 ? ' hot' : ' ink'}" style="width:${Math.min(100, 100 * val / 0.6)}%"${tipAttr(`${l}: ${pct(val)}`)}></i></div><div class="num">${pct(val)}</div></div>`).join('')}</div>`;
+  }
 
   PAGES.data = v => {
     const M = D('meta'), S = D('reality').store, max = Math.max(...M.mix.map(m => m.real + m.synthetic));
@@ -761,7 +837,7 @@
     v.innerHTML = `
       <p class="eyebrow">${ico('shield')}Data &amp; trust</p>
       <h1 class="page">One observed day, thirty <mark>simulated</mark> ones</h1>
-      <p class="lede">These apps have no public data feed. One day of Blinkit was collected by hand: those numbers carry no tag. The rest was simulated so the pipeline has something to run on: that is the <b>Lab</b>. A Lab result shows a method works. It is not a market finding, and the site tags it every time.</p>
+      <p class="lede">These apps have no public data feed. One day of Blinkit was collected by hand: those numbers are tagged Observed. The rest was simulated so the pipeline has something to run on: that is the <b>Lab</b>. A Lab result shows a method works. It is not a market finding, and the site tags it every time.</p>
       <div class="grid2">
         <div class="panel"><h3>Rows by platform</h3><p class="note">Solid was observed. Hatched was simulated.</p>
           <div class="legend"><span><i class="sw solid"></i>Collected on Blinkit</span><span><i class="sw hatch"></i>Lab</span></div>
@@ -771,7 +847,7 @@
         </div>
         <div class="panel"><h3>The tags, used everywhere</h3>
           <table class="t"><tbody>
-            <tr><td><b>No tag</b></td><td>Collected by hand on Blinkit. The only rows that describe the market.</td></tr>
+            <tr><td>${chip('REAL')}</td><td>Collected by hand on Blinkit. The only rows that describe the market.</td></tr>
             <tr><td>${chip('SYNTHETIC')}</td><td>Simulated rows, and anything fitted to them. Shows the method, not the market.</td></tr>
             <tr><td>${chip('METHOD')}</td><td>How the project works: rules, definitions, assumptions.</td></tr>
             <tr><td>${chip('EXTERNAL')}</td><td>A cited public source. Context only, never checked against the data.</td></tr>
@@ -828,17 +904,20 @@
           <div class="head"><span class="no">${esc(m.n)}</span><h3>${pe(m.name)}</h3>${chip(m.data)}${m.storeLevel ? chip('UNVERIFIED') : ''}</div>
           <p class="q">${pe(m.q)}</p>
           <p class="res">${pe(m.result)}${m.detail ? ' ' + pe(m.detail) : ''}</p>
-          <p class="sup"><b>Does the data back it?</b> ${pe(m.supported)}</p>
+          ${/^In the Lab only\.?$/.test(m.supported) ? '' : `<p class="sup"><b>Does the data back it?</b> ${pe(m.supported.replace(/^In the Lab only\.\s*/, ''))}</p>`}
+          ${m.next ? `<p class="next">${ico('arrow')}<span>${pe(m.next)}</span></p>` : ''}
         </div>
         ${m.chart ? `<figure class="mviz"><figcaption><b>${pe(m.chart.title)}</b><span>${pe(m.chart.note || '')}</span></figcaption>${chartFor(m.chart)}</figure>` : ''}
       </article>`;
     const seen = M.filter(m => m.data === 'REAL').length, lab = M.length - seen;
+    // the models on the observed day come first: they are the ones that say something about Blinkit's data
+    const order = M.slice().sort((a, b) => (a.data === 'REAL' ? 0 : 1) - (b.data === 'REAL' ? 0 : 1));
     v.innerHTML = `<p class="eyebrow">${ico('chart')}Models</p><h1 class="page">${M.length} models, each held to a <mark>baseline</mark></h1>
-      <p class="lede">${seen} work on the Blinkit day that was collected by hand. ${lab} run in the Lab, where a good score means the method recovers what was planted in the simulated panel. None of those ${lab} is validated on how Blinkit behaves over time, because only one day was observed. Hover a chart for its numbers.</p>
+      <p class="lede">${seen} work on the Blinkit day that was collected by hand ${chip('REAL')} and come first. ${lab} run in the Lab ${chip('SYNTHETIC')}, where a good score means the method recovers what was planted in the simulated market; none of those is validated on how Blinkit behaves over time, because only one day was observed. Hover a chart for its numbers.</p>
       <div class="mfilter">${segs('m-filter', [['all', `All ${M.length}`], ['SYNTHETIC', `Lab models · ${lab}`], ['REAL', `Blinkit data · ${seen}`]], st.f)}</div>
       <div class="mrows" id="m-rows"></div>`;
     const draw = () => {
-      $('#m-rows').innerHTML = M.filter(m => st.f === 'all' || m.data === st.f).map(row).join('');
+      $('#m-rows').innerHTML = order.filter(m => st.f === 'all' || m.data === st.f).map(row).join('');
       $$('#m-filter button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === st.f)));
       mem.set('mfilter', st.f);
     };
@@ -1514,10 +1593,10 @@
         products.push(out);
       }
       if (typeof Blob !== 'function' || typeof URL === 'undefined' || !URL.createObjectURL || typeof document.createElement !== 'function') return;
-      const doc = {app: 'Qcom', kind: 'your-products', version: 1, exported: new Date().toISOString(), products};
+      const doc = {app: 'ShelfPulse', kind: 'your-products', version: 1, exported: new Date().toISOString(), products};
       const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], {type: 'application/json'}));
       const a = document.createElement('a');
-      a.href = url; a.download = `qcom-products-${new Date().toISOString().slice(0, 10)}.json`;
+      a.href = url; a.download = `shelfpulse-products-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       toast(`Exported ${products.length} product${products.length === 1 ? '' : 's'}`, 'download');
@@ -1530,7 +1609,7 @@
       if (file.size > 25 * 1024 * 1024) throw new Error('That file is larger than 25 MB.');
       const doc = JSON.parse(await file.text());
       const list = doc && doc.kind === 'your-products' && Array.isArray(doc.products) ? doc.products : null;
-      if (!list) throw new Error('That is not a file of Qcom products.');
+      if (!list) throw new Error('That is not a file of ShelfPulse products.');
       const key = p => (String(p.name || '').trim() + '|' + String(p.pack || '').trim()).toLowerCase();
       const have = new Set(userCache.map(key));
       let added = 0, skipped = 0;
@@ -1776,7 +1855,7 @@
       ${tiles([[`${M.run.ok} of ${M.run.steps}`, 'steps passing'], [`${M.run.passed} of ${M.run.tests}`, 'tests passing'], K ? [`${K.passed} of ${K.passed + K.failed}`, 'data contracts holding'] : null, [`${M.ledger.numbers}`, 'doc numbers checked against outputs'], [esc((M.run.finished || '').slice(0, 10)), 'last run recorded']].filter(Boolean))}
       ${K ? `<h2>Data contracts ${chip('METHOD')}</h2>
       <p class="sub">The invariants every model relies on, checked as one gate right after the data layer is built (${esc(String(K.seconds))} s on ${esc((K.checked || '').slice(0, 10))}). Each one has a planted-violation test that it must catch. <code>python -m src.pipeline.contracts</code></p>
-      <div class="contracts">${K.items.map(c => `<div class="ct" title="${esc(c.id)}"><span class="pill ${c.ok ? 'ok' : 'bad'}">${c.ok ? ico('check') + 'Holds' : 'Broken'}</span><span class="ct-r">${pe(c.rule)}</span><small>${pe(c.observed)}<br><span class="ct-ref">${esc(c.id)} · ${esc(c.ref)}</span></small></div>`).join('')}</div>` : ''}
+      <div class="contracts">${K.items.map(c => `<div class="ct" title="${esc(c.id)}"><span class="pill ${c.ok ? 'ok' : 'bad'}">${c.ok ? ico('check') + 'Holds' : 'Broken'}</span><span class="ct-r">${pe(c.rule)}</span><small>${pe(c.observed)}<br><span class="ct-ref">${esc(c.id)} · ${pe(c.ref)}</span></small></div>`).join('')}</div>` : ''}
       <div class="legend" style="margin-top:var(--s6)"><span><b>No tag</b>: built only from the Blinkit data</span><span>${chip('SYNTHETIC')} uses the simulated panel</span></div>
       ${groups.map(([g, label]) => `<h2>${pe(GROUP[g] || label)}</h2><div class="panel" style="padding:8px var(--pad)">${R.steps.filter(s => s.group === g).map(s => `<details class="step"><summary>
           <span class="pill ${state(s)[0]}">${state(s)[1]}</span><span class="nm" title="${esc(s.step)}">${pe(s.step)}</span><span class="wh">${pe(s.what.replace(/\s*\((REAL|SYNTHETIC)[^)]*\)/g, ''))} ${s.outputs.map(o => o.scope ? chip(o.scope) : '').filter((x, i, a) => a.indexOf(x) === i).join(' ')}</span>
@@ -1879,7 +1958,7 @@
     return `<div class="shop" id="bk-shop"><div class="shop-head"><b>${ico('cart')}Shop it on ${esc(app)}</b>${app === cheapest ? '<span class="pill deal">cheapest here</span>' : ''}</div>
       <div class="segs shop-apps" role="group" aria-label="Which app">${P.map((p, i) => `<button type="button" data-shop-app="${esc(p)}" aria-pressed="${p === app}"><i class="pdot c${i}"></i>${esc(p.split(' ')[0])}</button>`).join('')}</div>
       <ol class="shop-list">${lines.map(l => `<li><span>${l.q} × ${esc(l.name)}</span>${shopLink(app, l, 'Add on ' + esc(app.split(' ')[0]))}</li>`).join('')}</ol>
-      <p class="fine" style="margin:0">Each link opens ${esc(app)}'s own search for that product in a new tab, where you add it to your cart. The app may first ask where to deliver or ask you to sign in, as it would on its own site. Qcom cannot fill another app's cart, and the price there is today's, which can differ from the one above.</p></div>`;
+      <p class="fine" style="margin:0">Each link opens ${esc(app)}'s own search for that product in a new tab, where you add it to your cart. The app may first ask where to deliver or ask you to sign in, as it would on its own site. ShelfPulse cannot fill another app's cart, and the price there is today's, which can differ from the one above.</p></div>`;
   }
   function basketSync() {
     const items = basket.items(), cnt = $('#bk-count'), keys = new Set(items.map(x => x.k));
@@ -2108,8 +2187,10 @@
     const M = D('meta'), obs = M.mix.reduce((s, m) => s + m.real, 0);
     const first = sel => () => $(sel);
     return [
-      {page: 'home', el: first('.hero'), t: 'Four apps, one city',
-        x: `Who is cheapest, what is in stock and how fast it arrives, across Blinkit, Swiggy Instamart, Flipkart Minutes and BigBasket in Bhubaneswar. ${int(obs)} Blinkit listings were collected by hand; everything simulated carries the Lab tag.`},
+      {page: 'home', el: first('.hero'), t: 'One day of Blinkit, collected by hand',
+        x: `Quick-commerce apps publish no data, so ${int(obs)} Blinkit listings were logged by hand. Everything on the site says whether it was observed or simulated in the Lab.`},
+      {page: 'findings', el: first('.findings'), t: 'What the data itself revealed',
+        x: 'Four findings, none simulated: a data defect the anomaly detector caught on its own, stock-outs that cluster by product, prices labelled observed that were looked up on the web, and a store column that carries no information.'},
       {page: 'listings', el: first('#x-shelf'), t: 'Every product, every layer',
         x: 'Each card is one listing followed end to end: the observed price, the same product matched on the other apps, what each model predicts, the prices it can post, a simulation and the move it recommends, with the reason.'},
       {page: 'simulate', act: () => { const b = $('[data-preset="0"]'); if (b) b.click(); }, el: first('#s-out'), t: 'What if Blinkit runs a Diwali sale?',
@@ -2118,8 +2199,6 @@
         x: 'Set a goal such as cheapest for 40 of every 100 products, and get the smallest price cut that reaches it, with and without competitors responding. It never claims profit: there is no cost or sales data.'},
       {page: 'analyst', act: () => ask('What is Blinkit revenue?'), el: first('[data-thread]'), t: 'An analyst that knows what it does not know',
         x: 'Ask in plain words. Every claim carries its source and date, and a question the data cannot answer, like revenue or demand, is turned down before anything is looked up.'},
-      {page: 'festive', el: first('#f-next'), t: 'Stock up before the season',
-        x: 'The festival calendar computes itself from the positions of the sun and moon for Bhubaneswar, years ahead, and says what to stock and by when. It says when a product is in season, never how much more sells.'},
       {page: 'data', el: () => $('#view .panel'), t: 'Every number says where it came from',
         x: `One observed day, thirty simulated ones, and the site never blurs them. ${M.contracts ? `${M.contracts.passed} of ${M.contracts.total} data contracts` : 'Data contracts'} and ${M.run.passed} of ${M.run.tests} tests gate every run.`},
     ];
@@ -2200,14 +2279,12 @@
 
   /* ================================================================== ticker, router */
   (function ticker() {
-    const M = D('meta'), W = D('whatif'), E = D('analystEval'), base = W.cells['Blinkit|All|-1|static'].b;
-    const order = P.map((p, i) => [p, base[i]]).sort((a, b) => b[1] - a[1]);
+    // observed findings first: the Lab's cheapest-of-four shares only give back what the simulator was built with
+    const M = D('meta'), E = D('analystEval');
     const ev = E.browser ? E.browser.summary : null;
-    const nf = upcoming()[0], nd = nf ? daysTo(nf.start) : null;
     const items = [
-      nf ? `<b>${esc(nf.name)}</b> ${nd > 0 ? `in ${nd} day${nd === 1 ? '' : 's'}` : 'is on now'}: time to stock ${esc(nf.groups.slice(0, 2).map(k => D('festive').groups[k].label.toLowerCase()).join(' and '))}` : '',
-      `<b>Lab</b> cheapest of four: ${order.map(([p, s]) => `${esc(p)} ${pct(s, 0)}`).join(' · ')}`,
       `<b>Blinkit</b> ${int(M.mix.reduce((s, m) => s + m.real, 0))} listings collected by hand`,
+      ...obsFindings().map(f => `<b>${esc(f.big)}</b> ${esc(f.cap)}`),
       `<b>${M.run.passed} of ${M.run.tests}</b> tests passing`,
       ev ? `<b>Analyst</b> turns down ${ev.tuning.refused_when_it_must + ev.holdout.refused_when_it_must} of ${ev.tuning.must_refuse + ev.holdout.must_refuse} questions it must` : '<b>Analyst</b> answers with its sources',
       `<b>${M.ledger.numbers}</b> doc numbers checked against saved results`,
@@ -2217,7 +2294,10 @@
   const view = $('#view');
   function route(first) {
     const h = location.hash.slice(1), page = PAGES[h] ? h : 'home';
-    $$('.nav a').forEach(a => { if (a.dataset.page === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    $$('.nav a, #more-menu a').forEach(a => { if (a.dataset.page === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    const inMore = NAV.some(n => n[0] === page && n[4]);
+    if (moreBtn) { moreBtn.classList.toggle('on', inMore); moreBtn.innerHTML = `${ico('more')}${inMore ? esc(NAV.find(n => n[0] === page)[1]) : 'More'}`; }
+    moreClose();
     tip.hidden = true;
     try { PAGES[page](view); } catch (e) {
       view.innerHTML = `<h1 class="page">This page could not be drawn</h1><p class="lede">${esc(String((e && e.message) || e))}</p>`;
