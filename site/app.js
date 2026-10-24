@@ -102,6 +102,7 @@
     cart: '<path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.5L20.5 8H6.1"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/>',
     share: '<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1"/>',
     command: '<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>', play: '<path d="M7 5v14l11-7z"/>',
   };
   const ico = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${PATHS[n] || PATHS.box}</svg>`;
   /* the project's data labels, as the site's tags. REAL has none: whatever is not tagged Lab was observed on Blinkit */
@@ -712,7 +713,7 @@
           <p class="eyebrow">${ico('bolt')}Market intelligence for quick commerce</p>
           <h1>Who is <mark>cheapest</mark>, what is in stock, how fast it arrives</h1>
           <p class="lede">Four apps, one city. This pipeline matches products across Blinkit, Swiggy Instamart, Flipkart Minutes and BigBasket, forecasts price, stock and delivery time, tests a price move before you make it, and answers questions with its sources shown.</p>
-          <div class="cta"><a class="btn pop" href="#simulate">${ico('sliders')}Try a price move</a><a class="btn ghost" href="#optimize">${ico('target')}Find the smallest cut</a><button class="btn ghost" type="button" data-open-dock>${ico('chat')}Ask the analyst</button></div>
+          <div class="cta"><a class="btn pop" href="#simulate">${ico('sliders')}Try a price move</a><a class="btn ghost" href="#optimize">${ico('target')}Find the smallest cut</a><button class="btn ghost" type="button" data-open-dock>${ico('chat')}Ask the analyst</button><button class="btn ghost tour-btn" type="button" data-tour>${ico('play')}Take the tour</button></div>
         </div>
         ${board(f, `price check · ${esc(f.dec.at)}`, `<p class="fine" style="margin:16px 0 0">One product, one moment, in the Lab. <a href="#listings" data-product="${esc(f.name)}">See its full story</a></p>`)}
       </div>
@@ -1955,7 +1956,8 @@
   const palOpenNow = () => { const p = $('#pal'); return !!p && !p.hidden; };
   function palIndex() {
     const out = NAV.map(([p, l, i]) => ({kind: 'Page', name: l, meta: 'Go to ' + l, icon: i, go: () => goTo(p)}));
-    out.push({kind: 'Action', name: 'Open the basket', meta: 'Which app is cheapest for everything you picked', icon: 'cart', go: openBasket},
+    out.push({kind: 'Action', name: 'Take the tour', meta: 'Seven stops through what the site can do', icon: 'play', go: () => tourShow(0)},
+      {kind: 'Action', name: 'Open the basket', meta: 'Which app is cheapest for everything you picked', icon: 'cart', go: openBasket},
       {kind: 'Action', name: 'Switch light or dark', meta: 'Theme', icon: 'moon', go: toggleTheme},
       {kind: 'Action', name: 'Share this page', meta: 'Copy a link to what you are looking at', icon: 'share', go: shareLink},
       {kind: 'Action', name: 'Ask the analyst', meta: 'Open the chat', icon: 'chat', go: openDock});
@@ -2097,6 +2099,105 @@
     }
   } catch (e) { /* offline support is optional */ }
 
+  /* ================================================================== the tour: a guided walk for presenting the site
+     Seven stops. Each opens its page, does one thing on it (a preset, a question), dims everything but the part that
+     matters and says in one line why it matters. Arrow keys or Enter move on, Esc ends. Started by the button on Home,
+     from Ctrl K, or by opening the site with ?tour in the address. The page stays usable underneath: the dimming does
+     not catch clicks. Captions use the project's own saved numbers, never typed-in ones. */
+  const TOUR = () => {
+    const M = D('meta'), obs = M.mix.reduce((s, m) => s + m.real, 0);
+    const first = sel => () => $(sel);
+    return [
+      {page: 'home', el: first('.hero'), t: 'Four apps, one city',
+        x: `Who is cheapest, what is in stock and how fast it arrives, across Blinkit, Swiggy Instamart, Flipkart Minutes and BigBasket in Bhubaneswar. ${int(obs)} Blinkit listings were collected by hand; everything simulated carries the Lab tag.`},
+      {page: 'listings', el: first('#x-shelf'), t: 'Every product, every layer',
+        x: 'Each card is one listing followed end to end: the observed price, the same product matched on the other apps, what each model predicts, the prices it can post, a simulation and the move it recommends, with the reason.'},
+      {page: 'simulate', act: () => { const b = $('[data-preset="0"]'); if (b) b.click(); }, el: first('#s-out'), t: 'What if Blinkit runs a Diwali sale?',
+        x: 'Pick an app and a price change. Rivals follow a leader, so the gain is smaller than the naive estimate; both are shown. Answered instantly from runs worked out in advance, not guessed in the browser.'},
+      {page: 'optimize', el: first('#opt-body'), t: 'The smallest cut that reaches a goal',
+        x: 'Set a goal such as cheapest for 40 of every 100 products, and get the smallest price cut that reaches it, with and without competitors responding. It never claims profit: there is no cost or sales data.'},
+      {page: 'analyst', act: () => ask('What is Blinkit revenue?'), el: first('[data-thread]'), t: 'An analyst that knows what it does not know',
+        x: 'Ask in plain words. Every claim carries its source and date, and a question the data cannot answer, like revenue or demand, is turned down before anything is looked up.'},
+      {page: 'festive', el: first('#f-next'), t: 'Stock up before the season',
+        x: 'The festival calendar computes itself from the positions of the sun and moon for Bhubaneswar, years ahead, and says what to stock and by when. It says when a product is in season, never how much more sells.'},
+      {page: 'data', el: () => $('#view .panel'), t: 'Every number says where it came from',
+        x: `One observed day, thirty simulated ones, and the site never blurs them. ${M.contracts ? `${M.contracts.passed} of ${M.contracts.total} data contracts` : 'Data contracts'} and ${M.run.passed} of ${M.run.tests} tests gate every run.`},
+    ];
+  };
+  let tourAt = -1, tourSteps = null, tourRaf = 0;
+  const tourOn = () => tourAt >= 0;
+  function tourPlace() {
+    tourRaf = 0;
+    const s = tourSteps && tourSteps[tourAt], spot = $('#tour-spot');
+    if (!s || !spot) return;
+    const el = s.el && s.el();
+    if (!el || !el.getBoundingClientRect) { spot.classList.add('none'); return; }
+    // the lit area sits between the sticky header and the caption card, so the card never covers what it points at
+    const r = el.getBoundingClientRect(), vh = window.innerHeight || 800, pad = 10;
+    const hd = $('header.top'), card = $('#tour-card');
+    const ceil = hd && hd.getBoundingClientRect ? Math.max(8, hd.getBoundingClientRect().bottom + 6) : 8;
+    const floor = card && !card.hidden && card.getBoundingClientRect ? card.getBoundingClientRect().top - 12 : vh - 8;
+    const top = Math.max(r.top - pad, ceil), bottom = Math.min(r.bottom + pad, floor);
+    spot.classList.toggle('none', bottom - top < 24);
+    spot.style.cssText = `top:${top}px;left:${r.left - pad}px;width:${r.width + 2 * pad}px;height:${Math.max(0, bottom - top)}px`;
+  }
+  const tourQueue = () => { if (tourOn() && !tourRaf) tourRaf = (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(tourPlace); };
+  function tourShow(i) {
+    if (!tourOn() && i === 0) tourSteps = null;                 // a fresh tour does each stop's action again
+    tourSteps = tourSteps || TOUR();
+    tourAt = clamp(i, 0, tourSteps.length - 1);
+    const s = tourSteps[tourAt], card = $('#tour-card');
+    document.body.classList.add('touring');
+    closeDock(); palClose(); closeBasket();
+    if (location.hash.slice(1) !== s.page) goTo(s.page);
+    const n = tourSteps.length, last = tourAt === n - 1;
+    card.innerHTML = `<div class="tc-main"><div class="tc-top"><span class="tc-n">${tourAt + 1} / ${n}</span><span class="tc-dots">${tourSteps.map((_, k) => `<i${k === tourAt ? ' class="on"' : ''}></i>`).join('')}</span></div>
+      <h3>${esc(s.t)}</h3><p>${esc(s.x)}</p></div>
+      <div class="tc-side"><button type="button" class="tc-x" id="tour-x" aria-label="End the tour">${ico('x')}</button>
+        <div class="tc-acts"><button type="button" class="btn ghost" id="tour-back"${tourAt ? '' : ' disabled'}>Back</button>
+        <button type="button" class="btn pop" id="tour-next">${last ? 'Finish' : 'Next'}${last ? '' : ico('arrow')}</button></div>
+        <p class="tc-keys"><kbd>←</kbd> <kbd>→</kbd> · <kbd>Esc</kbd></p></div>`;
+    card.hidden = false; $('#tour-spot').hidden = false;
+    $('#tour-x').addEventListener('click', tourEnd);
+    $('#tour-back').addEventListener('click', () => tourShow(tourAt - 1));
+    $('#tour-next').addEventListener('click', () => (last ? tourEnd() : tourShow(tourAt + 1)));
+    // the page redraws on the next tick after the address changes: act on it then, let an answer arrive, then bring
+    // the part that matters into view and light it. A stop's action runs once per tour, so Back does not repeat it.
+    const at = tourAt;
+    setTimeout(() => {
+      if (tourAt !== at) return;
+      try { if (s.act && !s.done) { s.done = true; s.act(); } } catch (e) { /* the stop still shows */ }
+      setTimeout(() => {
+        if (tourAt !== at) return;
+        const el = s.el && s.el(), hd = $('header.top');
+        if (el && el.getBoundingClientRect && typeof window.scrollTo === 'function') {
+          const head = hd && hd.getBoundingClientRect ? hd.getBoundingClientRect().bottom : 0;
+          window.scrollTo({top: Math.max(0, (window.scrollY || 0) + el.getBoundingClientRect().top - head - 22), behavior: canMotion() ? 'smooth' : 'auto'});
+        }
+        tourQueue(); setTimeout(tourQueue, 450); setTimeout(tourQueue, 900);
+      }, s.act ? 300 : 30);
+    }, 80);
+    const nb = $('#tour-next'); if (nb && nb.focus) nb.focus({preventScroll: true});
+  }
+  function tourEnd() {
+    tourAt = -1;
+    const card = $('#tour-card'), spot = $('#tour-spot');
+    if (card) card.hidden = true; if (spot) spot.hidden = true;
+    document.body.classList.remove('touring');
+    try { if (/[?&]tour\b/.test(String(location.search))) history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* the address keeps it */ }
+  }
+  window.addEventListener('scroll', tourQueue, {passive: true});
+  window.addEventListener('resize', tourQueue, {passive: true});
+  document.addEventListener('keydown', e => {
+    if (!tourOn()) return;
+    const tag = String((e.target && e.target.tagName) || '');
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+    if (e.key === 'Escape') { e.preventDefault(); tourEnd(); }
+    else if (e.key === 'ArrowRight' || (e.key === 'Enter' && !(e.target && e.target.closest && e.target.closest('button, a')))) { e.preventDefault(); if (tourAt < tourSteps.length - 1) tourShow(tourAt + 1); else tourEnd(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); tourShow(tourAt - 1); }
+  });
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-tour]')) { e.preventDefault(); tourShow(0); } });
+
   /* ================================================================== ticker, router */
   (function ticker() {
     const M = D('meta'), W = D('whatif'), E = D('analystEval'), base = W.cells['Blinkit|All|-1|static'].b;
@@ -2128,8 +2229,11 @@
     if (!first) { window.scrollTo(0, 0); view.focus({preventScroll: true}); }
     const cur = $('.nav a[aria-current]'); if (cur && cur.scrollIntoView) cur.scrollIntoView({block: 'nearest', inline: 'nearest'});
   }
-  window.addEventListener('hashchange', () => route(false));
+  window.addEventListener('hashchange', () => { route(false); tourQueue(); });
   route(true);
+  // ?tour in the address starts the tour: one link to open on the presenting screen (not in automated browsers,
+  // whose checks must see the pages undimmed)
+  try { if (/[?&]tour\b/.test(String(location.search)) && !automated) setTimeout(() => tourShow(0), 400); } catch (e) { /* no tour */ }
   /* what the checks need: the wording filter and the answer renderer, as the pages use them */
   window.QCSite = {plain, answerHtml, srcLabel, internal,
     basket: {add: k => basket.add(k), remove: k => basket.remove(k), set: (k, q) => basket.set(k, q), clear: () => basket.clear(),

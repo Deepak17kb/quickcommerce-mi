@@ -652,6 +652,15 @@ and "actual real images of products ... from Google or directly Blinkit".
   the same file on upload.wikimedia.org. CSP img-src allows images.openfoodfacts.org and upload.wikimedia.org only.
   `python scripts/fetch_product_photos.py --kinds-only` redoes the kind photos without re-searching Open Food Facts.
   The drawn packshots are code-drawn SVG, not AI images.
+- **The tour (2026-10-24, for presenting the site).** `TOUR` in site/app.js: seven stops (Home hero, Products shelf,
+  Simulate with the Diwali preset pressed, Optimize, Analyst asking a question it must refuse, Festive, Data & trust).
+  A spotlight (its own box-shadow, no click-catching overlay) lit between the sticky header and the caption card, so
+  the card never covers it; arrows/Enter/Esc. Started by "Take the tour" on Home, from Ctrl K, or `?tour` in the
+  address (never in automated browsers, so the checks see pages undimmed). A stop's action runs once per tour.
+  Captions read saved numbers (meta), never typed ones. Audit the same day: 0 script errors, 0 sideways scroll on 81
+  screenshots; page switches <= 81 ms (<= 345 ms at 4x CPU); live cold load ~1.3 s (LCP), ~2.0 s on 4G + 4x CPU;
+  the 2.9 MB page goes out gzipped at 0.58 MB. Moving the big data blocks after the scripts was weighed and not done
+  (Home needs the what-if grid, Products the analyst's categories; ~0.3 s for a two-phase render).
 - **Runner.** `keep_awake()` (SetThreadExecutionState) stops idle sleep during a run: on 2026-10-22 at 01:42 sleep
   (Kernel-Power 42) killed step 34. A partial run (--step/--only/--from/--resume) now merges into run_all.json.
   Long runs are launched hidden (WMI, ShowWindow=0): the owner closed a visible console window once and killed a run.

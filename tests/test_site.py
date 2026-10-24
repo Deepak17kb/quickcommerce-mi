@@ -36,6 +36,18 @@ def test_sources_exist_and_name_every_page():
     assert css.count('--bg:') == 3 and ':root:not([data-theme="light"])' in css and ':root[data-theme="dark"]' in css
 
 
+def test_the_tour_visits_only_pages_that_exist_and_can_be_started():
+    app = (ROOT / 'site' / 'app.js').read_text(encoding='utf-8')
+    html = (ROOT / 'site' / 'index.html').read_text(encoding='utf-8')
+    tour = app.split('const TOUR = () =>')[1].split('let tourAt')[0]
+    stops = re.findall(r"\{page: '(\w+)'", tour)
+    assert len(stops) >= 5 and all(f'PAGES.{p} = ' in app for p in stops), stops
+    assert 'id="tour-spot"' in html and 'id="tour-card"' in html
+    assert 'data-tour' in app.split('PAGES.home = ')[1].split('PAGES.data = ')[0]     # the button on Home
+    assert "name: 'Take the tour'" in app                                             # and the palette entry
+    assert '!automated' in app.split('// ?tour in the address starts the tour')[1][:300]   # checks see the pages undimmed
+
+
 def _built(name='index.html'):
     f = SITE / name
     if not f.exists():
