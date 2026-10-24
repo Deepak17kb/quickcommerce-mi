@@ -1743,6 +1743,8 @@ html.still #tour-spot { transition: none; } html.still #tour-card { animation: n
       // the project's working notes are not a source a reader can open: a "(CLAUDE.md s.4)" citation is dropped and
       // any other mention reads as the project notes
       .replace(/\s*\((?:see )?CLAUDE\.md[^)]*\)/g, '').replace(/\bCLAUDE\.md\b/g, 'project notes')
+      // the site was called Qcom until 2026-10-24; older notes the analyst quotes still say so
+      .replace(/\bQcom\b/g, 'ShelfPulse')
       // names of outputs, files and columns: real_store_label_audit -> observed_store_label_audit
       .replace(/query_real_snapshot/g, 'observed_query').replace(/_the_real_market/g, '_the_market')
       // (no lookbehind anywhere: Safari before 16.4 rejects the whole script over one)
