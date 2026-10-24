@@ -78,6 +78,15 @@ fast does it arrive**. It answers them with a pipeline that runs from raw observ
 </tr>
 </table>
 
+### From the basket to Blinkit
+
+Pick the app in the basket and every item gets its own button. **Add on Blinkit** opens Blinkit's own search for
+that exact product and pack in a new tab, and you tap *Add* there to put it in your Blinkit cart. The same works for
+Swiggy Instamart, Flipkart Minutes and BigBasket. No website can write into another app's cart, so the hand-off stops at
+the app's search, and the basket says so; the price there is that day's, which can differ from the one in the basket.
+
+<img src="docs/assets/basket-blinkit.png" alt="The basket set to Blinkit: each item has an Add on Blinkit button that opens Blinkit's search for that product in a new tab" width="100%">
+
 <details>
 <summary><b>Dark mode, phones and the little things</b></summary>
 <br>
