@@ -114,7 +114,7 @@ says so. Where a target cannot be reached on the grid that was simulated, the pa
 `src/seasonal/festive.py` holds three things, each with its own tag: festival dates for Oct 2026 to Oct 2027 from
 public panchang and holiday calendars, checked 2026-10-14, with their source links (Public source); which product types
 are traditionally bought for each festival, as keyword rules over product names (Method); and the observed rows each
-rule matches (Seen 10 Jul). The page says WHEN a product is in season, from the calendar. It never says how much more
+rule matches (observed, untagged). The page says WHEN a product is in season, from the calendar. It never says how much more
 sells: the data has no orders, and the one observed day, in July, was not a festival. "Stock up by" is the festival
 start minus a lead time the viewer sets. The analyst still turns down "what sells most at Diwali"; its answer links to
 the planner. The planner writes to `outputs/festive/`, not `outputs/models/`, so the analyst does not index it. Extend
@@ -150,12 +150,13 @@ in the browser (longest side 1000 px, JPEG) before it is sent.
 - A product whose name matches a festive product type shows its next festival ("Diwali in 23 d").
 - **Remove** takes two clicks and deletes the entry and its photo.
 
-## Wording: Seen 10 Jul, Lab and checks
+## Wording: Lab, untagged and checks
 
 The pages do not use the project's two data labels as words, nor "snapshot" (owner's requests, 2026-10-14). A number
-observed on Blinkit is tagged **Seen 10 Jul**; one from the simulated panel or fitted to it, **Lab**. A snapshot as a
+from the simulated panel or fitted to it is tagged **Lab**; one observed on Blinkit carries no tag (the owner asked
+for the observed-data tag and the collection date off the pages, 2026-10-24). A snapshot as a
 unit of time is a **check**: one round of prices and stock, morning or evening, so twelve checks are six days. Every
-number still carries one of the two tags, so a simulated competitor price is never shown as a market fact. Only the
+simulated number still carries the Lab tag, so a simulated competitor price is never shown as a market fact. Only the
 words changed.
 
 - `plain()` in `app.js` rewords project text (analyst answers, model notes, log lines) when it is drawn. It runs

@@ -69,7 +69,8 @@ def test_site_keeps_the_two_tags_while_dropping_the_two_words():
     models = json.loads(blocks['models'])
     assert {m['data'] for m in models} == {'REAL', 'SYNTHETIC'} and sum(m['data'] == 'REAL' for m in models) == 3
     app = (ROOT / 'site' / 'app.js').read_text(encoding='utf-8')
-    assert "REAL: ['is-seen', 'camera', 'Seen 10 Jul']" in app and "SYNTHETIC: ['is-lab', 'flask', 'Lab']" in app
+    assert "if (p === 'REAL') return ''" in app and "SYNTHETIC: ['is-lab', 'flask', 'Lab']" in app   # observed: no tag
+    assert 'Seen 10 Jul' not in app                                   # the observed tag is gone (owner, 2026-10-24)
     assert '/* plain:start */' in app and '/* plain:end */' in app
     meta = json.loads(blocks['meta'])
     shown = meta['suggested']

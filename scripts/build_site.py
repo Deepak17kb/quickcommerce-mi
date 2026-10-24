@@ -41,7 +41,7 @@ SUGGESTED_PAIRS = [
     ('How accurate is the next-price forecast?',) * 2,
     ('Does the store column carry any information?', 'Does the store label on the real rows carry information?'),
     ('What happens if Blinkit cuts prices by 3 percent?',) * 2,
-    ('Out-of-stock rate by category on 10 Jul', 'Out-of-stock rate by category on the real snapshot'),
+    ('Out-of-stock rate by category on Blinkit', 'Out-of-stock rate by category on the real snapshot'),
     ('Is matcher v2 better than v1?',) * 2,
     ('How many days of hand-logged data would be enough?', 'How many days of real data would be enough?'),
     ('What is Blinkit revenue?',) * 2,
@@ -209,7 +209,7 @@ def model_charts() -> dict:
               'groups': [[f"{lvl} interval", [eta['conformal_intervals'][lvl]['raw_quantile_coverage_on_val'],
                                               eta['conformal_intervals'][lvl]['marginal_cqr_test_coverage']], eta['conformal_intervals'][lvl]['target']]
                          for lvl in ('80%', '90%')]},
-        '6': {'type': 'lines', 'title': 'Of the top flags, how many are the known defect', 'note': 'Precision at the top k flags, on the 10 Jul rows.',
+        '6': {'type': 'lines', 'title': 'Of the top flags, how many are the known defect', 'note': 'Precision at the top k flags, on the observed Blinkit rows.',
               'x': {'title': 'Top flags checked', 'fmt': 'int', 'cat': list(ks)}, 'y': {'title': 'Flags that are the defect', 'fmt': 'pct0', 'min': 0, 'max': 0.8},
               'series': [{'name': label, 'cls': cls, 'area': cls == 'own', 'pts': [[k, det[key][f'precision_at_{k}']] for k in ks]}
                          for key, label, cls in (('unit_price_z (|z|)', 'Unit price', 'own'), ('combined (max |z|)', 'Combined', 'alt'),

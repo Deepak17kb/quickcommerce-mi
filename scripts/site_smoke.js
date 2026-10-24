@@ -64,8 +64,9 @@ function leaked(markup) {
   wordsScanned += text.length;
   const out = [];
   for (const m of text.matchAll(WORD)) if (m[1] !== 'Real' || /^ [a-z]/.test(text.slice(m.index + m[0].length))) out.push(text.slice(Math.max(0, m.index - 70), m.index + 50).replace(/\s+/g, ' '));
-  // nor "snapshot", in any form (the owner asked for it off the pages too, 2026-10-14): the site says "Seen 10 Jul" and "check"
-  for (const m of text.matchAll(/snapshot/gi)) out.push(text.slice(Math.max(0, m.index - 70), m.index + 50).replace(/\s+/g, ' '));
+  // nor "snapshot", in any form (the owner asked for it off the pages too, 2026-10-14): the site says "check"; nor the
+  // collection day as a label, "Seen 10 Jul" or "10 Jul" (asked off the pages 2026-10-24: an untagged number is Blinkit's)
+  for (const m of text.matchAll(/snapshot|\b10 Jul\b/gi)) out.push(text.slice(Math.max(0, m.index - 70), m.index + 50).replace(/\s+/g, ' '));
   return out;
 }
 function scan(what) {
@@ -103,7 +104,7 @@ for (const page of pages) {
   const REAL = {
     '#sim-tabs': ['move', 'promo', 'outage', 'listing'], '#opt-tabs': ['target', 'listing', 'restock'],
     '#s-mover': ['0', '1', '2', '3'], '#o-mover': ['0', '1', '2', '3'], '#s-group': W.groups, '#o-group': W.groups, '#p-cat': Object.keys(W.frontier),
-    '#s-move': ['-10', '-3', '0', '7', '10'], '#p-cut': ['0', '5', '10'], '#o-target': ['10', '40', '75'], '#ol-target': ['10', '50', '90'],
+    '#s-move': ['-10', '-3', '0', '7', '10'], '#s-app': ['0', '1', '2', '3'], '#s-change': ['-10', '-5', '-3', '3', '5', '10'], '#o-app': ['0', '1', '2', '3'], '#o-goal': ['20', '40', '60'], '#p-cut': ['0', '5', '10'], '#o-target': ['10', '40', '75'], '#ol-target': ['10', '50', '90'],
     '#l-rung': ['0', '2', '5'], '#r-cap': ['0.25', '0.5', '1', '2', '4'], '#n-prod': ['0', '3', '6'], '#n-per': ['1', '2'], '#n-days': ['0', '4', '8'],
     '#n-sec': ['5', '60'], '#m-filter': ['all', 'REAL', 'SYNTHETIC'], '#pf-sort': ['feat', 'low', 'high', 'eta', 'cheap'],
     '#pf-q': ['frooti', 'diya', 'zzz'], '#pf-cat': ['Beverages', 'Personal Care', ''], '#n-rows': ['price_gap', 'cheapest_share', 'oos_rate', 'restock_mean', 'hazard_ratio', 'response_beta', 'evening_eta'],

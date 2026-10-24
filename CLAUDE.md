@@ -465,8 +465,8 @@ All SYNTHETIC unless marked REAL. Recovery of planted values is a pipeline check
   `scripts/build_site.py` inlines them with the data into ONE file, `outputs/site/index.html`.
   `python scripts/serve_site.py` (or `start_site.bat`) serves it at http://localhost:8000, loopback by default, with
   `POST /api/ask` answered by the offline analyst. It is no longer published as an artifact. Settled:
-  - Site wording (owner's requests, 2026-10-14): no page uses the two data-label words, nor "snapshot". A REAL
-    number is tagged "Seen 10 Jul", a SYNTHETIC one "Lab"; a snapshot as a time unit is a "check" (one round of
+  - Site wording (owner's requests, 2026-10-14): no page uses the two data-label words, nor "snapshot". A SYNTHETIC
+    number is tagged "Lab" and a REAL one carries no tag (since 2026-10-24, see section 15); a snapshot as a time unit is a "check" (one round of
     prices and stock). Project text is reworded on display by `plain()` in `site/app.js`. The tags themselves stay on
     every number: removing the words is allowed, removing the distinction is not. `scripts/site_smoke.js` fails if
     any of those words reaches a page, a tooltip or a drawn answer. The rule covers the website only: `data_status`
@@ -596,7 +596,7 @@ The owner listed six limits of the first pass and asked to "fix these". What eac
   k skipped") and no longer counted as not passing on the site either (`meta.run.tests` = tests that ran).
 - **README wording (owner, 2026-10-20: "replace all synthetic with real in readme").** Declined as asked: relabelling
   simulated rows as real would misstate the data. Done instead: the README holds no "synthetic"; the data table shows
-  the site's tags (Seen 10 Jul / Lab) and points to `src.load.real_only()`. Keep it that way: "simulated" / "Lab" in
+  the site's tags (Lab, or none for observed rows) and points to `src.load.real_only()`. Keep it that way: "simulated" / "Lab" in
   prose, never "real" for a simulated number.
 
 ## 15. Third pass, 2026-10-23: settled facts — do not re-derive
@@ -644,3 +644,8 @@ and "actual real images of products ... from Google or directly Blinkit".
 - **Runner.** `keep_awake()` (SetThreadExecutionState) stops idle sleep during a run: on 2026-10-22 at 01:42 sleep
   (Kernel-Power 42) killed step 34. A partial run (--step/--only/--from/--resume) now merges into run_all.json.
   Long runs are launched hidden (WMI, ShowWindow=0): the owner closed a visible console window once and killed a run.
+- **No tag on observed numbers (2026-10-24).** The owner asked for the observed-data tag and the day's date off the pages, and the
+  two Home tiles "seen on Blinkit on one day" / "simulated, and tagged Lab" removed. `chip('REAL')` now renders nothing:
+  the Lab tag alone marks simulated numbers, so an untagged number is Blinkit's own (Data & trust says so in its tag
+  table). site_smoke.js fails on "10 Jul" anywhere a visitor reads, except their own typed question. Analyst answers
+  about the data keep their as-of date in ISO form (2026-07-10): it is part of the answer, not a label.

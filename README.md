@@ -103,7 +103,7 @@ owner's informed consent, and **every row says which it is**:
 
 | Platform | Rows | What it is | Tag on the site |
 |---|---:|---|---|
-| Blinkit | 21,949 | observed on one day, 10 Jul 2026 | **Seen 10 Jul** |
+| Blinkit | 21,949 | observed on one day, collected by hand | none: untagged means observed |
 | Blinkit | 148,740 | simulated 30-day panel | **Lab** |
 | Swiggy Instamart | 150,480 | simulated 30-day panel | **Lab** |
 | Flipkart Minutes | 142,320 | simulated 30-day panel | **Lab** |
@@ -116,7 +116,7 @@ observed ones.
 Product names, brands, categories, pack sizes, store names and coordinates are real throughout. On simulated rows,
 prices, stock, ETA, offers and badges come from `SIMULATED_GENERATOR_v15.1`, which is calibrated to the observed day
 in two places (stock-out level by category, price-ending style); `docs/GENERATOR_v15_PARAMETERS.md` marks every
-parameter as calibrated or assumed. On the website the two tags read **Seen 10 Jul** and **Lab**.
+parameter as calibrated or assumed. On the website simulated numbers carry the tag **Lab**; observed ones carry none.
 
 > **Simulated structure is planted, not discovered.** When a model recovers a value the generator planted, that proves
 > the modelling pipeline works, the way recovering Flipkart Minutes' planted −6% price gap proves the cross-platform

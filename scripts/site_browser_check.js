@@ -205,9 +205,9 @@ async function main() {
     await click('#f-look [data-fq="Handmade diya"]'); await shot('41-festive-lookup-light', {viewport: true});
     await go('simulate'); await click('#sim-tabs [data-v="move"]'); await shot('04-simulate-move-light');
     await run(`const pick = (id, v) => { const s = document.getElementById(id); s.value = v; s.dispatchEvent(new Event('change', {bubbles: true})); };
-      pick('s-dir', 'raise'); pick('s-size', '5'); pick('s-react', 'no'); await new Promise(r => setTimeout(r, 200));
+      document.querySelector('#s-change [data-v="5"]').click(); pick('s-react', 'no'); await new Promise(r => setTimeout(r, 200));
       const a = document.querySelector('#s-out .answer');
-      if (!a || !/raises its prices by 5%.*of every 100/s.test(a.textContent)) throw new Error('the sentence did not answer: ' + (a && a.textContent));`);
+      if (!a || !/raises its prices by 5%.*of every 100/s.test(a.textContent)) throw new Error('tapping a change did not answer: ' + (a && a.textContent));`);
     await shot('05-simulate-raise-frozen-light', {maxHeight: 1400});
     for (const [t, n] of [['promo', '06'], ['outage', '07'], ['listing', '08']]) { await click(`#sim-tabs [data-v="${t}"]`); await shot(`${n}-simulate-${t}-light`); }
     await go('optimize');

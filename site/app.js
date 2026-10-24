@@ -1,7 +1,8 @@
 /* app.js — the storefront pages. Every number is read from the JSON blocks build_site.py embeds; nothing is computed
    from raw data here. Simulate and Optimize read simulations that were run in advance and say so.
 
-   Wording: a number observed on Blinkit is tagged "Seen 10 Jul" and one from the simulated 30-day panel "Lab". A
+   Wording: a number from the simulated 30-day panel is tagged "Lab"; one observed on Blinkit carries no tag and no date
+   (the owner asked for the observed tag and its date off the pages, 2026-10-24), so an untagged number is Blinkit's own. A
    snapshot, as a unit of time, is a "check": one round of prices and stock, morning or evening. plain() rewrites the
    project's own labels into those words wherever project text is shown, so a number never loses its tag. */
 (function () {
@@ -103,10 +104,10 @@
     command: '<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/>',
   };
   const ico = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${PATHS[n] || PATHS.box}</svg>`;
-  /* the project's four data labels, as the site's tags */
-  const CHIPS = {REAL: ['is-seen', 'camera', 'Seen 10 Jul'], SYNTHETIC: ['is-lab', 'flask', 'Lab'], METHOD: ['is-method', 'book', 'Method'],
+  /* the project's data labels, as the site's tags. REAL has none: whatever is not tagged Lab was observed on Blinkit */
+  const CHIPS = {SYNTHETIC: ['is-lab', 'flask', 'Lab'], METHOD: ['is-method', 'book', 'Method'],
     EXTERNAL: ['is-source', 'link', 'Public source'], UNVERIFIED: ['is-unverified', 'alert', 'Store unverified'], USER: ['is-user', 'user', 'Added by you']};
-  const chip = p => { const c = CHIPS[p] || CHIPS.METHOD; return `<span class="chip ${c[0]}">${ico(c[1])}${c[2]}</span>`; };
+  const chip = p => { if (p === 'REAL') return ''; const c = CHIPS[p] || CHIPS.METHOD; return `<span class="chip ${c[0]}">${ico(c[1])}${c[2]}</span>`; };
   const CAT_ICON = {'Fruits & Vegetables': 'leaf', 'Beverages': 'cup', 'Personal Care': 'drop', 'Snacks & Munchies': 'bag', 'Home & Cleaning': 'spray',
     'Frozen Foods': 'snow', 'Tea, Coffee & More': 'mug'};
   const tipAttr = t => ` tabindex="0" data-tip="${pe(t)}"`;
@@ -355,7 +356,7 @@
     for (const c of D('explorer').chains) add({kind: 'listing', name: c.name, cat: c.category, pack: c.pack, meta: `Followed listing · ${rs(c.dec.price)} on Blinkit`, go: () => { mem.set('listing', c.name); goTo('listings'); }});
     for (const p of userCache) add({kind: 'yours', name: p.name, cat: p.category, pack: p.pack, meta: 'Your product', go: () => goTo('listings')});
     for (const f of firstOfEach(upcoming())) add({kind: 'festival', name: f.name, meta: `${/\b(Day|Eve)\b/.test(f.name) ? 'Special day' : 'Festival'} ·${fmtD(dOf(f.day), {weekday: 'short'})}`, go: () => { mem.set('festive', Object.assign(mem.get('festive', {}), {fest: f.key})); goTo('festive'); }});
-    for (const g of Object.values(D('festive').groups)) for (const e of g.examples) add({kind: 'item', name: e.name, cat: e.category, pack: e.pack, meta: `${g.label} · listed on 10 Jul`, go: () => { mem.set('festive', Object.assign(mem.get('festive', {}), {q: e.name})); goTo('festive'); }});
+    for (const g of Object.values(D('festive').groups)) for (const e of g.examples) add({kind: 'item', name: e.name, cat: e.category, pack: e.pack, meta: `${g.label} · listed on Blinkit`, go: () => { mem.set('festive', Object.assign(mem.get('festive', {}), {q: e.name})); goTo('festive'); }});
     return out;
   }
   function hideDrop() { const d = $('#top-drop'); if (d) d.hidden = true; dropSel = -1; }
@@ -686,7 +687,7 @@
 
   PAGES.home = v => {
     const M = D('meta'), W = D('whatif'), O = D('optimize'), E = D('analystEval'), X = D('explorer');
-    const obs = M.mix.reduce((s, m) => s + m.real, 0), sim = M.mix.reduce((s, m) => s + m.synthetic, 0);
+    const obs = M.mix.reduce((s, m) => s + m.real, 0);
     const a = W.cells['Blinkit|All|-3|strategic'], b = W.cells['Blinkit|All|-3|static'], oc = O.byCategory[0];
     const ev = E.browser ? E.browser.summary : null;
     const refN = ev ? ev.tuning.must_refuse + ev.holdout.must_refuse : null;
@@ -694,7 +695,7 @@
     const allN = ev ? ev.tuning.questions + ev.holdout.questions : E.python.tuning_set.questions + E.python.holdout_set.questions;
     const f = X.chains[0];
     const stops = [
-      ['Collect', `${int(obs)} listings seen`, 'one day, 10 Jul 2026', 'data', false],
+      ['Collect', `${int(obs)} Blinkit listings`, 'collected by hand', 'data', false],
       ['Validate', M.contracts ? `${M.contracts.passed} of ${M.contracts.total} data contracts hold` : 'files hash-checked', `${M.run.passed} of ${M.run.tests} tests pass`, 'pipeline', false],
       ['Match', 'same product or not', 'accuracy waits on labels', 'models', true], ['Features', '109 columns', 'none may see the future', 'data', false],
       ['Predict', 'nine forecasting models', 'each against a baseline', 'models', false], ['Simulate', 'what if a price moves', 'checked on the status quo', 'simulate', false],
@@ -709,11 +710,10 @@
         </div>
         ${board(f, `price check · ${esc(f.dec.at)}`, `<p class="fine" style="margin:16px 0 0">One product, one moment, in the Lab. <a href="#listings" data-product="${esc(f.name)}">See its full story</a></p>`)}
       </div>
-      ${tiles([[int(M.rows), 'observations in total'], [int(obs), 'seen on Blinkit on one day'], [int(sim), 'simulated, and tagged Lab'],
-        [M.stores, 'stores'], [int(M.products), 'catalog products'], [`${M.run.ok} of ${M.run.steps}`, 'pipeline steps passing']])}
+      ${tiles([[int(M.rows), 'observations in total'], [M.stores, 'stores'], [int(M.products), 'catalog products'], [`${M.run.ok} of ${M.run.steps}`, 'pipeline steps passing']])}
       ${mem.get('welcomed', 0) ? '' : `<div class="welcome" id="welcome"><div><b>New here? Three things to try</b>
           <ol><li><a href="#listings">Tap a product</a> and see every app's price, what the models predict, and where to buy it</li>
-            <li><a href="#simulate">Ask "what if"</a> in a sentence: what if Blinkit cuts prices 5%?</li>
+            <li><a href="#simulate">Try "what if"</a>: tap an app and a price change, and see who ends up cheapest</li>
             <li><a href="#festive">Plan for the next festival</a> or special day, with what to stock and when</li></ol>
           <p class="fine" style="margin:6px 0 0">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump anywhere, or ask the analyst in plain words.</p></div>
           <button type="button" class="linkish" id="welcome-close" aria-label="Hide this">Got it</button></div>`}
@@ -737,7 +737,7 @@
       <div class="tracker">${stops.map(([n, x, y, pg, wait]) => `<a class="stop${wait ? ' wait' : ''}" href="#${pg}"><b>${n}</b><span>${x}</span><i>${y}</i></a>`).join('')}</div>
       <h2>Good to know</h2>
       <div class="panel"><div class="lists">
-        <div><h4>It can say</h4><ul><li>What Blinkit listed, at what price and stock status, on 10 Jul 2026 ${chip('REAL')}</li><li>That each method recovers what was planted in the simulated panel ${chip('SYNTHETIC')}</li><li>Who is cheapest and in stock under those fitted dynamics ${chip('SYNTHETIC')}</li></ul></div>
+        <div><h4>It can say</h4><ul><li>What Blinkit listed, at what price and stock status, on the day it was collected</li><li>That each method recovers what was planted in the simulated panel ${chip('SYNTHETIC')}</li><li>Who is cheapest and in stock under those fitted dynamics ${chip('SYNTHETIC')}</li></ul></div>
         <div><h4>It cannot say</h4><ul><li>Anything about demand, sales, revenue, margin or elasticity: there are no orders in the data</li><li>How the market itself moves over time: only one day was observed</li><li>Which store listed which product: the store column is unverified</li></ul></div>
         <div><h4>What would change that</h4><ul><li>A hand-logged panel, sized on <a href="#plan">Plan the panel</a></li><li>Human labels on product pairs</li><li>The collection record for the store column</li></ul></div>
       </div></div>
@@ -754,17 +754,17 @@
     v.innerHTML = `
       <p class="eyebrow">${ico('shield')}Data &amp; trust</p>
       <h1 class="page">One observed day, thirty <mark>simulated</mark> ones</h1>
-      <p class="lede">These apps have no public data feed. One day of Blinkit, 10 Jul 2026, was collected by hand: those numbers are tagged <b>Seen 10 Jul</b>. The rest was simulated so the pipeline has something to run on: that is the <b>Lab</b>. A Lab result shows a method works. It is not a market finding, and the site tags it every time.</p>
+      <p class="lede">These apps have no public data feed. One day of Blinkit was collected by hand: those numbers carry no tag. The rest was simulated so the pipeline has something to run on: that is the <b>Lab</b>. A Lab result shows a method works. It is not a market finding, and the site tags it every time.</p>
       <div class="grid2">
         <div class="panel"><h3>Rows by platform</h3><p class="note">Solid was observed. Hatched was simulated.</p>
-          <div class="legend"><span><i class="sw solid"></i>Seen 10 Jul</span><span><i class="sw hatch"></i>Lab</span></div>
+          <div class="legend"><span><i class="sw solid"></i>Collected on Blinkit</span><span><i class="sw hatch"></i>Lab</span></div>
           ${M.mix.map(m => `<div class="row" style="grid-template-columns:minmax(0,.8fr) minmax(0,2fr) minmax(110px,auto)"><div class="lab">${esc(m.platform)}</div>
             <div class="split" style="margin:0;width:${100 * (m.real + m.synthetic) / max}%">${m.real ? `<i class="seg obs" style="flex:${m.real} 1 0"${tipAttr(`${m.platform}: ${int(m.real)} observed rows`)}></i>` : ''}<i class="seg sim" style="flex:${m.synthetic} 1 0"${tipAttr(`${m.platform}: ${int(m.synthetic)} simulated rows`)}></i></div>
             <div class="num">${m.real ? int(m.real) + ' + ' : ''}${int(m.synthetic)}</div></div>`).join('')}
         </div>
-        <div class="panel"><h3>Five tags, used everywhere</h3>
+        <div class="panel"><h3>The tags, used everywhere</h3>
           <table class="t"><tbody>
-            <tr><td>${chip('REAL')}</td><td>Seen on Blinkit on 10 Jul 2026. The only rows that describe the market.</td></tr>
+            <tr><td><b>No tag</b></td><td>Collected by hand on Blinkit. The only rows that describe the market.</td></tr>
             <tr><td>${chip('SYNTHETIC')}</td><td>Simulated rows, and anything fitted to them. Shows the method, not the market.</td></tr>
             <tr><td>${chip('METHOD')}</td><td>How the project works: rules, definitions, assumptions.</td></tr>
             <tr><td>${chip('EXTERNAL')}</td><td>A cited public source. Context only, never checked against the data.</td></tr>
@@ -823,8 +823,8 @@
       </article>`;
     const seen = M.filter(m => m.data === 'REAL').length, lab = M.length - seen;
     v.innerHTML = `<p class="eyebrow">${ico('chart')}Models</p><h1 class="page">${M.length} models, each held to a <mark>baseline</mark></h1>
-      <p class="lede">${seen} work on the Blinkit day observed on 10 Jul 2026. ${lab} run in the Lab, where a good score means the method recovers what was planted in the simulated panel. None of those ${lab} is validated on how Blinkit behaves over time, because only one day was observed. Hover a chart for its numbers.</p>
-      <div class="mfilter">${segs('m-filter', [['all', `All ${M.length}`], ['SYNTHETIC', `Lab models · ${lab}`], ['REAL', `Seen 10 Jul · ${seen}`]], st.f)}</div>
+      <p class="lede">${seen} work on the Blinkit day that was collected by hand. ${lab} run in the Lab, where a good score means the method recovers what was planted in the simulated panel. None of those ${lab} is validated on how Blinkit behaves over time, because only one day was observed. Hover a chart for its numbers.</p>
+      <div class="mfilter">${segs('m-filter', [['all', `All ${M.length}`], ['SYNTHETIC', `Lab models · ${lab}`], ['REAL', `Blinkit data · ${seen}`]], st.f)}</div>
       <div class="mrows" id="m-rows"></div>`;
     const draw = () => {
       $('#m-rows').innerHTML = M.filter(m => st.f === 'all' || m.data === st.f).map(row).join('');
@@ -836,12 +836,23 @@
   };
 
   /* ---------------------------------------------------------------- simulate */
-  /* ---- the plain-language layer of Simulate and Optimize: ask in a sentence, answer in a sentence and a picture */
+  /* ---- the plain-language layer of Simulate and Optimize: ask by tapping, answer in one big number and a sentence */
   const per100 = x => Math.round(100 * clamp(+x || 0, 0, 1));
   const optSel = (id, opts, cur, label) => `<select id="${id}" class="inline" aria-label="${esc(label)}">${opts.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(cur) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
-  /* a hundred products as squares: how many of them this app is the cheapest for */
-  const waffle = (n, cls, label) => `<figure class="waffle-fig"><div class="waffle ${cls}" role="img" aria-label="${esc(label)}: ${n} of 100 products">${Array.from({length: 100}, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('')}</div><figcaption><b>${n}</b> of 100 · ${esc(label)}</figcaption></figure>`;
-  const howTo = steps => `<ol class="howto">${steps.map((s, i) => `<li><span>${i + 1}</span>${s}</li>`).join('')}</ol>`;
+  /* the easy way in (owner, 2026-10-24: "I can't tell what to do here"): one question at a time, answered by tapping a
+     big button; the finer choices wait under "More options" */
+  const pickRow = (id, n, q, opts, cur) => `<div class="pick"><p class="pick-q"><span>${n}</span>${q}</p>
+    <div class="pick-opts" id="${id}" role="group" aria-label="${esc(q)}">${opts.map(([v, l, c]) => `<button type="button" data-v="${esc(v)}" aria-pressed="${String(v) === String(cur)}">${c != null ? `<i class="pdot c${c}"></i>` : ''}${esc(l)}</button>`).join('')}</div></div>`;
+  const pressed = (id, v) => $$(`#${id} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v))));
+  const whatIs = body => `<div class="whatis"><b>${ico('spark')}What is this?</b><p>${body}</p></div>`;
+  const labNote = s => `<p class="lab-note">${chip('SYNTHETIC')}<span>${s}</span></p>`;
+  /* out of 100 products, how many each app is the cheapest for: faded today, solid after */
+  const cmpBars = (rows, label) => `<div class="cmp" role="img" aria-label="${esc(rows.map(r => `${r.name}: ${r.a} of 100 products, ${r.b} today`).join('; '))}">
+    <div class="legend"><span><i class="sw ghost-sw"></i>today</span><span><i class="sw"></i>${esc(label || 'after the change')}</span></div>
+    ${rows.map(r => `<div class="cmp-row${r.hi ? ' hi' : ''}"><span class="lab"><i class="pdot c${r.c}"></i>${esc(r.name)}</span>
+      <div class="cmp-track"><i class="ghost" style="width:${r.b}%"></i><i class="fill c${r.c}" style="width:${r.a}%"></i></div>
+      <span class="num">${r.a === r.b ? r.a : `${r.b} → <b>${r.a}</b>`}</span></div>`).join('')}
+    <p class="fine" style="margin:0">Out of every 100 products; a tie counts for every tied app.</p></div>`;
   const GLOSSARY = [
     ['Cheapest app for a product', 'Of the four apps, the one with the lowest price for it. "18 of every 100 products" means it is cheapest on 18 in 100.'],
     ['The other apps follow', 'When one app moves its price, the others move theirs part of the way, as they do in the Lab. "Stay put" means they do not react at all.'],
@@ -860,30 +871,31 @@
     st.mover = clamp(st.mover | 0, 0, 3); st.move = clamp(Math.round(+st.move) || 0, -10, 10); st.pcut = clamp(st.pcut | 0, 0, 10);
     st.li = st.li | 0; st.react = st.react !== false;
     const save = () => mem.set('sim', st);
-    v.innerHTML = `<p class="eyebrow">${ico('sliders')}Mode · Simulate</p><h1 class="page">What if an app changes its prices? See who ends up <mark>cheapest</mark></h1>
-      <p class="lede">Pick a change, read the answer in plain words. Everything here was simulated in advance on the Lab market ${chip('SYNTHETIC')}: it shows what the fitted rules imply, not what the apps will actually do, and never sales or profit.</p>
-      ${howTo(['Choose a story below, or tap a ready-made one', 'Read the answer: out of every 100 products, how many each app is cheapest for', 'Open the details for the charts and the uncertainty'])}
-      ${glossary()}
-      ${tabsHtml('sim-tabs', [['move', 'Change a price'], ['promo', 'Sale or lower price?'], ['outage', 'An app runs out'], ['listing', 'One product']], st.tab)}<div id="sim-body"></div>`;
+    v.innerHTML = `<p class="eyebrow">${ico('sliders')}Mode · Simulate</p><h1 class="page">What if an app changes its <mark>prices</mark>?</h1>
+      ${whatIs('For every product, one of the four apps is the cheapest. Pretend one app makes its prices cheaper or dearer, and see for how many products it would then be the cheapest. <b>Tap an app, then tap a change.</b>')}
+      ${tabsHtml('sim-tabs', [['move', 'Change prices'], ['promo', 'Sale or lower price?'], ['outage', 'An app runs out'], ['listing', 'One product']], st.tab)}<div id="sim-body"></div>
+      ${labNote('Worked out in advance in the Lab, a practice market built from the data. It shows what the fitted rules imply, not what the apps will actually do, and never sales or profit.')}
+      ${glossary()}`;
     const body = $('#sim-body');
     const PRESETS = [['Diwali sale: Blinkit cuts 5%', 0, -5, 'All'], ['Price war: Flipkart cuts 10%', 2, -10, 'All'], ['Blinkit raises 3%', 0, 3, 'All'],
       ['Instamart cuts snacks 5%', 1, -5, 'Snacks & Munchies'], ['BigBasket cuts staples 7%', 3, -7, 'Staples & Grains']];
     const draw = {
       move() {
-        const size = Math.abs(st.move) || 3, dir = st.move > 0 ? 'raise' : st.move < 0 ? 'cut' : 'keep';
+        const CHANGES = [[-10, 'Cut 10%'], [-5, 'Cut 5%'], [-3, 'Cut 3%'], [3, 'Raise 3%'], [5, 'Raise 5%'], [10, 'Raise 10%']];
         body.innerHTML = `<div class="ask-card">
-            <p class="sentence">If ${optSel('s-mover', P.map((p, i) => [i, p]), st.mover, 'Which app')}
-              ${optSel('s-dir', [['cut', 'cuts'], ['raise', 'raises'], ['keep', 'keeps']], dir, 'Cut or raise')} its prices
-              <span id="s-by">by ${optSel('s-size', Array.from({length: 10}, (_, i) => [i + 1, (i + 1) + '%']), size, 'By how much')}</span>
-              on ${optSel('s-group', W.groups.map(g => [g, g === 'All' ? 'all products' : g]), st.group, 'Which products')},
-              and the other apps ${optSel('s-react', [['yes', 'follow'], ['no', 'stay put']], st.react ? 'yes' : 'no', 'Do the others react')} …</p>
+            ${pickRow('s-app', 1, 'Which app changes its prices?', P.map((p, i) => [i, p, i]), st.mover)}
+            ${pickRow('s-change', 2, 'What does it do?', CHANGES, st.move)}
+            <details class="more-opts"><summary>More options: other sizes, one category, rivals</summary><div class="opt-grid">
+              <label>Exact change ${optSel('s-move', Array.from({length: 21}, (_, i) => i - 10).map(x => [x, x === 0 ? 'no change' : `${x < 0 ? 'cut' : 'raise'} ${Math.abs(x)}%`]), st.move, 'Exact change')}</label>
+              <label>Which products ${optSel('s-group', W.groups.map(g => [g, g === 'All' ? 'all products' : g]), st.group, 'Which products')}</label>
+              <label>Do the other apps react? ${optSel('s-react', [['yes', 'yes, they follow (as in the Lab)'], ['no', 'no, they stay put']], st.react ? 'yes' : 'no', 'Do the others react')}</label>
+            </div></details>
             <div class="sugg presets"><span class="fine">Or try:</span>${PRESETS.map((x, i) => `<button type="button" data-preset="${i}">${esc(x[0])}</button>`).join('')}</div>
           </div>
           <div id="s-out"></div>`;
         const out = $('#s-out');
         const render = () => {
           const m = st.mover, mv = st.move;
-          const by = $('#s-by'); if (by) by.hidden = mv === 0;
           const view = st.react ? 'strategic' : 'static', ov = st.react ? 'static' : 'strategic';
           const c = W.cells[`${P[m]}|${st.group}|${mv || -1}|${view}`], o = W.cells[`${P[m]}|${st.group}|${mv || -1}|${ov}`];
           if (!c) { out.innerHTML = '<p class="note">No run was saved for this combination.</p>'; return; }
@@ -893,33 +905,28 @@
           const where = st.group === 'All' ? 'products' : `${esc(st.group)} products`;
           const verb = mv === 0 ? 'keeps its prices' : `${mv < 0 ? 'cuts' : 'raises'} its prices by ${Math.abs(mv)}%`;
           const answer = mv === 0
-            ? `Today ${who} is the cheapest of the four apps for <b>${nb} of every 100</b> ${where}. Pick a cut or a raise to see what changes.`
-            : `If ${who} ${verb}, it becomes the cheapest app for <b>${na} of every 100</b> ${where}, ${na === nb ? 'the same as' : na > nb ? `up from` : 'down from'} ${na === nb ? 'today' : `${nb} today`}.
-               ${st.react ? `That is with the other apps following, as they do in the Lab; if they stayed put it would be ${other} of 100.` : `That is if the other apps stay put; in the Lab they follow, which would make it ${other} of 100.`}`;
-          const ranks = P.map((p, j) => [p, per100(after[j]), j]).sort((x, y) => y[1] - x[1]);
-          out.innerHTML = `<div class="answer-card">${chip('SYNTHETIC')}<p class="answer">${answer}</p>
-              <div class="waffles">${waffle(nb, 'base', 'today')}${mv === 0 ? '' : waffle(na, 'c' + m, 'after the move')}</div>
-              <p class="fine" style="margin:0">After the move, cheapest app per 100 ${where}: ${ranks.map(([p, n, j]) => `<span class="rank"><i class="pdot c${j}"></i>${esc(p)} ${n}</span>`).join(' ')} (a tie counts for every tied app).</p></div>
-            <details class="more" open><summary>The details: numbers, uncertainty and the next six days</summary>` + tiles([[`${pct(c.b[m])} → ${pct(after[m])}`, `${esc(P[m])}: share of products where it is the cheapest of four`],
+            ? `Today ${who} is the cheapest app for <b>${nb} of every 100</b> ${where}. Tap a change above to see what moves.`
+            : `If ${who} ${verb}, it is the cheapest app for <b>${na} of every 100</b> ${where}, ${na === nb ? 'the same as today' : `${na > nb ? 'up' : 'down'} from ${nb} today`}.`;
+          const why = mv === 0 ? '' : st.react
+            ? `This assumes the other apps follow part of the way, as they do in the Lab. If they did nothing, it would be ${other} of 100.`
+            : `This assumes the other apps do nothing. In the Lab they follow part of the way, which would make it ${other} of 100.`;
+          out.innerHTML = `<div class="answer-card">${chip('SYNTHETIC')}
+              <div class="big-ans" aria-hidden="true"><span class="from">${nb}</span>${mv === 0 ? '' : `<span class="arrow">→</span><span class="to c${m}">${na}</span>`}<span class="cap">of every 100 ${where},<br>${who} is the cheapest</span></div>
+              <p class="answer">${answer}</p>${why ? `<p class="fine" style="margin:0">${why}</p>` : ''}
+              ${cmpBars(P.map((p, j) => ({name: p, c: j, b: per100(c.b[j]), a: per100(after[j]), hi: j === m})))}</div>
+            <details class="more"><summary>For experts: numbers, uncertainty and the next six days</summary>` + tiles([[`${pct(c.b[m])} → ${pct(after[m])}`, `${esc(P[m])}: share of products where it is the cheapest of four`],
               [`${sgn(d[1])} pp`, `change, 90% of runs between ${sgn(d[0])} and ${sgn(d[2])}`],
               [`${sgn(od)} pp`, st.react ? 'if competitors did not react' : 'if competitors did react'], [int(c.n), 'products on all four platforms']]) +
-            `<div class="grid2"><div class="panel"><h3>Cheapest-of-four share, before and after</h3><p class="note">Ties count for each tied platform, so the four shares add to more than 100%.</p>
-              <div class="legend"><span><i class="sw ring"></i>before</span><span><i class="sw"></i>after</span></div>
-              ${P.map((p, j) => `<div class="row"><div class="lab">${pname(j)}${j === m ? ' <span class="fine">moves</span>' : ''}</div><div class="track"><i class="fill ghost" style="width:${125 * c.b[j]}%"></i><i class="fill c${j}" style="width:${125 * after[j]}%"${tipAttr(`${p}: ${pct(c.b[j])} before, ${pct(after[j])} after`)}></i></div><div class="num">${pct(after[j])}</div></div>`).join('')}
-              ${ticks([0, 20, 40, 60, 80], 80, t => t + '%', 'share of products')}</div>
-            <div class="panel"><h3>${esc(P[m])} over the next twelve checks</h3><p class="note">${m === 0 ? 'When Blinkit moves and rivals react, they close part of the gap from the next check on.' : 'Nobody follows this platform in the fitted dynamics, so both views agree.'}</p>
+            `<div class="panel"><h3>${esc(P[m])} over the next twelve checks</h3><p class="note">${m === 0 ? 'When Blinkit moves and rivals react, they close part of the gap from the next check on.' : 'Nobody follows this platform in the fitted dynamics, so both views agree.'}</p>
               <div class="legend"><span><i class="sw dash"></i>no move</span><span><i class="sw line"></i>with the move</span></div>
               ${lineChart([{cls: 'lb', pts: c.bp.map((y, i) => [i + 1, y])}, {cls: 'l0', pts: path.map((y, i) => [i + 1, y])}],
-                {xmax: 12.4, xticks: [1, 3, 6, 9, 12], xfmt: t => t, ymin: lo - pad, ymax: hi + pad, yfmt: t => pct(t, 0), label: 'Share by check'})}</div></div></details>`;
+                {xmax: 12.4, xticks: [1, 3, 6, 9, 12], xfmt: t => t, ymin: lo - pad, ymax: hi + pad, yfmt: t => pct(t, 0), label: 'Share by check'})}</div></details>`;
           save();
         };
-        const setMove = () => {                          // the sentence's verb and size make the signed move
-          const d = String(($('#s-dir') || {}).value || 'cut'), n = clamp(Math.round(+(($('#s-size') || {}).value)) || 3, 1, 10);
-          st.move = d === 'keep' ? 0 : d === 'raise' ? n : -n;
-        };
-        $('#s-mover').addEventListener('change', e => { st.mover = clamp(+e.target.value | 0, 0, 3); render(); });
-        $('#s-dir').addEventListener('change', () => { setMove(); render(); });
-        $('#s-size').addEventListener('change', () => { setMove(); render(); });
+        const sync = () => { pressed('s-app', st.mover); pressed('s-change', st.move); const e = $('#s-move'); if (e) e.value = String(st.move); };
+        onSeg('s-app', val => { st.mover = clamp(+val | 0, 0, 3); sync(); render(); });
+        onSeg('s-change', val => { st.move = clamp(Math.round(+val) || 0, -10, 10); sync(); render(); });
+        $('#s-move').addEventListener('change', e => { st.move = clamp(Math.round(+e.target.value) || 0, -10, 10); sync(); render(); });
         $('#s-group').addEventListener('change', e => { if (W.groups.includes(e.target.value)) st.group = e.target.value; render(); });
         $('#s-react').addEventListener('change', e => { st.react = e.target.value !== 'no'; render(); });
         body.querySelector('.presets').addEventListener('click', e => {
@@ -1005,25 +1012,29 @@
     const st = Object.assign({tab: 'target', mover: 0, group: 'All', target: 40, li: 0, ltarget: 50, cap: 1}, mem.get('opt', {}));
     if (!W.groups.includes(st.group)) st.group = 'All';
     st.mover = clamp(st.mover | 0, 0, 3); st.target = clamp(+st.target || 40, 10, 75); st.ltarget = clamp(+st.ltarget || 50, 10, 90); st.li = st.li | 0; st.cap = +st.cap || 1;
-    v.innerHTML = `<p class="eyebrow">${ico('target')}Mode · Optimize</p><h1 class="page">Set a goal, get the <mark>smallest price move</mark> that reaches it</h1>
-      <p class="lede">Say how often you want an app to be the cheapest, and get the smallest price cut that gets there, in plain words. Worked out on the Lab market ${chip('SYNTHETIC')}. The goal is being cheapest or in stock, never profit: there is no cost or sales data to compute profit from.</p>
-      ${howTo(['Say which app, which products, and how often it should be the cheapest', 'Read the answer: the cut to make, with and without the other apps following', 'Open the details for the chart and the saved run'])}
-      ${glossary()}
-      ${tabsHtml('opt-tabs', [['target', 'Reach a goal'], ['listing', 'Best price for one product'], ['restock', 'What to restock first']], st.tab)}<div id="opt-body"></div>`;
+    v.innerHTML = `<p class="eyebrow">${ico('target')}Mode · Optimize</p><h1 class="page">How much should an app <mark>cut its prices</mark>?</h1>
+      ${whatIs('Set a goal, like <i>"Blinkit should be the cheapest app for 40 of every 100 products"</i>, and get the smallest price cut that reaches it. <b>Tap an app, then tap a goal.</b>')}
+      ${tabsHtml('opt-tabs', [['target', 'Reach a goal'], ['listing', 'Best price for one product'], ['restock', 'What to restock first']], st.tab)}<div id="opt-body"></div>
+      ${labNote('Worked out in the Lab, a practice market built from the data. The goal is being cheapest or in stock, never profit: there is no cost or sales data to compute profit from.')}
+      ${glossary()}`;
     const body = $('#opt-body');
     const draw = {
       target() {
-        const goals = Array.from({length: 14}, (_, i) => 10 + 5 * i);
+        const goals = Array.from({length: 14}, (_, i) => 10 + 5 * i), QUICK = [20, 25, 30, 40, 50, 60];
         if (!goals.includes(st.target)) st.target = goals.reduce((a, b) => (Math.abs(b - st.target) < Math.abs(a - st.target) ? b : a));
-        body.innerHTML = `<div class="ask-card"><p class="sentence">I want ${optSel('o-mover', P.map((p, i) => [i, p]), st.mover, 'Which app')}
-            to be the cheapest app on ${optSel('o-target', goals.map(g => [g, g + ' of every 100']), st.target, 'How often')}
-            ${optSel('o-group', W.groups.map(g => [g, g === 'All' ? 'products' : g + ' products']), st.group, 'Which products')}.</p></div>
+        body.innerHTML = `<div class="ask-card">
+            ${pickRow('o-app', 1, 'Which app?', P.map((p, i) => [i, p, i]), st.mover)}
+            ${pickRow('o-goal', 2, 'It should be the cheapest app for how many of every 100 products?', QUICK.map(g => [g, `${g} of 100`]), st.target)}
+            <details class="more-opts"><summary>More options: another goal, one category</summary><div class="opt-grid">
+              <label>Exact goal ${optSel('o-target', goals.map(g => [g, g + ' of every 100']), st.target, 'How often')}</label>
+              <label>Which products ${optSel('o-group', W.groups.map(g => [g, g === 'All' ? 'all products' : g]), st.group, 'Which products')}</label>
+            </div></details></div>
           <div id="o-out"></div>
-          <h2>The saved optimiser run, for comparison</h2><p class="sub">It searched to a ${pct(O.maxCut, 0)} cut for Blinkit at a ${pct(O.target, 0)} target, by bisection. The answer above reads a coarser grid of whole-percent cuts, so it can differ by a few tenths.</p>
+          <details class="more"><summary>For experts: the saved optimiser run</summary><p class="sub">It searched to a ${pct(O.maxCut, 0)} cut for Blinkit at a ${pct(O.target, 0)} target, by bisection. The answer above reads a coarser grid of whole-percent cuts, so it can differ by a few tenths.</p>
           <div class="panel" style="--num:112px"><div class="legend"><span><i class="sw ring" style="border-color:var(--orange)"></i>rivals do not react</span><span><i class="sw"></i>rivals react</span></div>
             ${O.byCategory.map(r => `<div class="row"><div class="lab">${esc(r.category)}<small>${r.skus} products</small></div><div class="track"><i class="link" style="left:${100 * r.static / 12}%;width:${100 * (r.strategic - r.static) / 12}%"></i><i class="dot ring" style="left:${100 * r.static / 12}%"${tipAttr(`${r.category}: ${fix(r.static, 2)}% cut if rivals did not react`)}></i><i class="dot" style="left:${100 * r.strategic / 12}%"${tipAttr(`${r.category}: ${fix(r.strategic, 2)}% cut with rivals reacting`)}></i></div><div class="num">${fix(r.static, 1)}% → ${fix(r.strategic, 1)}%</div></div>`).join('')}
             ${ticks([0, 3, 6, 9, 12], 12, t => t + '%', 'smallest cut that reaches the target')}
-            <p class="note" style="margin-top:12px">Ignoring the response understates the cut needed: ${fix(O.ratio, 2)} times deeper once followers react (median across categories).</p></div>`;
+            <p class="note" style="margin-top:12px">Ignoring the response understates the cut needed: ${fix(O.ratio, 2)} times deeper once followers react (median across categories).</p></div></details>`;
         const render = () => {
           const m = st.mover, T = st.target / 100;
           const curve = view => { const base = W.cells[`${P[m]}|${st.group}|-1|${view}`]; return [base.b[m]].concat(W.cuts.map(c => W.cells[`${P[m]}|${st.group}|${-c}|${view}`].s[m])); };
@@ -1034,13 +1045,17 @@
           if (ns) marks.push([ns, T, 'blue', `With rivals reacting: ${fix(ns, 2)}% cut`]);
           if (nn) marks.push([nn, T, 'orange', `If rivals did not react: ${fix(nn, 2)}% cut`]);
           const who = esc(P[m]), where = st.group === 'All' ? 'products' : `${esc(st.group)} products`, nb = per100(S[0]);
-          const answer = ns === 0 ? `${who} is already the cheapest app on <b>${nb} of every 100</b> ${where}, so no cut is needed for this goal.`
+          const big = ns === 0 ? `<span class="to c${m}">0%</span><span class="cap">no cut needed:<br>already there</span>`
+            : ns == null ? `<span class="from">&gt;10%</span><span class="cap">more than this page<br>can work out</span>`
+            : `<span class="to c${m}">${fix(ns, 1)}%</span><span class="cap">price cut for ${who}</span>`;
+          const answer = ns === 0 ? `${who} is already the cheapest app for <b>${nb} of every 100</b> ${where}, so no cut is needed for this goal.`
             : ns == null ? `No cut of up to 10% gets ${who} there once the other apps follow. Try a smaller goal: larger cuts were not simulated.`
-            : `Cut ${who}'s prices by about <b>${fix(ns, 1)}%</b>. That makes it the cheapest app on ${st.target} of every 100 ${where} (up from ${nb} today), even with the other apps following.
-               ${nn != null && nn > 0 ? `If they stayed put, ${fix(nn, 1)}% would be enough${m === 0 ? `, but in the Lab they follow Blinkit, so plan for ${fix(ns, 1)}%` : ''}.` : ''}`;
-          $('#o-out').innerHTML = `<div class="answer-card">${chip('SYNTHETIC')}<p class="answer">${answer}</p>
-              <div class="waffles">${waffle(nb, 'base', 'today')}${waffle(st.target, 'c' + m, 'your goal')}</div></div>
-            <details class="more" open><summary>The details: the curve and the numbers</summary>` +
+            : `Cut ${who}'s prices by about <b>${fix(ns, 1)}%</b> to be the cheapest app for ${st.target} of every 100 ${where}. Today it is ${nb}.`;
+          const why = ns && nn != null && nn > 0 ? `That allows for the other apps following part of the way, as they do in the Lab. If they did nothing, ${fix(nn, 1)}% would be enough.` : '';
+          const bars = cmpBars([{name: P[m], c: m, b: nb, a: Math.max(nb, st.target), hi: true}], 'your goal');
+          $('#o-out').innerHTML = `<div class="answer-card">${chip('SYNTHETIC')}<div class="big-ans" aria-hidden="true">${big}</div>
+              <p class="answer">${answer}</p>${why ? `<p class="fine" style="margin:0">${why}</p>` : ''}${bars}</div>
+            <details class="more"><summary>For experts: the curve and the numbers</summary>` +
             (ns == null ? `<p class="banner warn">${ico('alert')}<span>No cut of up to 10% reaches ${st.target}% with rivals reacting. No answer is reported, because larger cuts were not simulated for this page.</span></p>` : '') +
             `<div class="side">${receipt('Your target', [[`${esc(P[m])} is cheapest now on`, pct(S[0])], ['Target', st.target + '%'], ['If rivals did not react', say(nn)],
                 ['How much deeper the response makes it', ns && nn ? fix(ns / nn, 2) + '×' : '—']], ['Smallest cut, rivals reacting', say(ns)])}
@@ -1049,9 +1064,12 @@
                 {xmax: 10, xticks: [0, 2, 4, 6, 8, 10], xfmt: t => t + '%', ymin: 0, ymax: Math.max(0.8, T + 0.05), yfmt: t => pct(t, 0), target: T, marks, label: 'Cheapest share by cut'})}</div></div></details>`;
           mem.set('opt', st);
         };
-        $('#o-mover').addEventListener('change', e => { st.mover = clamp(+e.target.value | 0, 0, 3); render(); });
+        const sync = () => { pressed('o-app', st.mover); pressed('o-goal', st.target); const e = $('#o-target'); if (e) e.value = String(st.target); };
+        const goal = val => clamp(Math.round((+val || 40) / 5) * 5, 10, 75);
+        onSeg('o-app', val => { st.mover = clamp(+val | 0, 0, 3); sync(); render(); });
+        onSeg('o-goal', val => { st.target = goal(val); sync(); render(); });
+        $('#o-target').addEventListener('change', e => { st.target = goal(e.target.value); sync(); render(); });
         $('#o-group').addEventListener('change', e => { if (W.groups.includes(e.target.value)) st.group = e.target.value; render(); });
-        $('#o-target').addEventListener('change', e => { st.target = clamp(Math.round((+e.target.value || 40) / 5) * 5, 10, 75); render(); });
         render();
       },
       listing() {
@@ -1122,7 +1140,7 @@
           <div data-thread data-empty='<p class="note" style="margin-top:24px">Pick a question above, or type your own. Try one it has to turn down.</p>'></div></div>
         <div class="stack" style="align-content:start;min-width:0">
           <div class="panel"><h3>How it answers</h3><ul class="cav" style="font-size:13.5px;color:var(--ink-2);margin:6px 0 0">
-            <li>The rules for what it must turn down run first.</li><li>A what-if question reads the simulator's saved runs.</li><li>A question about 10 Jul reads the observed rows.</li>
+            <li>The rules for what it must turn down run first.</li><li>A what-if question reads the simulator's saved runs.</li><li>A question about what Blinkit listed reads the observed rows.</li>
             <li>Anything else searches the documents and results.</li><li>A number that is not in the retrieved evidence is flagged.</li></ul>
             <p class="note" style="margin-top:16px">Served from this machine, questions go to the project's own analyst. Opened as a plain file, the same rules run inside the page.</p></div>
           <div class="panel"><h3>How it scores</h3><p class="note">The project's two question sets, graded by the same rules. The engine in the page is scored with its saved answers switched off.</p>
@@ -1185,7 +1203,7 @@
         return x && x.reachable_within_30pct ? `${label}: ${rs(x.price)} (cut ${rs(x.cut_rs)}, ${fix(x.cut_pct, 1)}%), cheapest in ${pct(x.mean_cheapest_share)} of checks` : `${label}: no price within 30% reaches the target`;
       };
       const seen = `<p class="note" style="margin-top:16px"><span class="pill">${ico('bolt')}${d.eta} min</span> <span class="pill ${d.inStock ? 'yes' : 'bad'}">${d.inStock ? 'in stock' : 'out of stock'}</span> ${d.promo ? `<span class="pill deal">${fix(d.disc, 1)}% off</span>` : ''}</p>
-        ${c.real ? `<p class="note">${chip('REAL')}${X.storeUnverified ? ' ' + chip('UNVERIFIED') : ''} On 10 Jul 2026: ${rs(c.real.price)}, ${esc(String(c.real.stock).toLowerCase())}, ${c.real.eta[0]} min. Context only: no model uses it. Its price and stock are checked against the source; that it belongs to this store is not.</p>` : ''}`;
+        ${c.real ? `<p class="note">${X.storeUnverified ? chip('UNVERIFIED') + ' ' : ''}On Blinkit: ${rs(c.real.price)}, ${esc(String(c.real.stock).toLowerCase())}, ${c.real.eta[0]} min. Context only: no model uses it. Its price and stock are checked against the source; that it belongs to this store is not.</p>` : ''}`;
       $('#x-out').innerHTML = `<h2>${esc(c.name)} <span style="font-weight:500;color:var(--ink-2)">${esc(c.pack)}</span></h2>
         <p class="sub">${esc(c.storeName)} · ${esc(c.store)} · ${esc(c.category)} &nbsp; <button class="btn ghost" type="button" id="x-ask">${ico('chat')}Ask the analyst to explain it</button></p>
         <p class="buy-on"><span class="fine">Buy it today on</span> ${P.map(p => shopLink(p, {name: c.name, pack: c.pack}, esc(p))).join('')}</p>
@@ -1573,7 +1591,6 @@
     st.q = String(st.q || '').slice(0, 120);
     if (!up.some(f => f.key === st.fest)) st.fest = up.length ? up[0].key : null;
     const save = () => mem.set('festive', st);
-    const snapDay = fmtD(dOf(F.snapshot_date), {year: 'numeric'});
     v.innerHTML = `<p class="eyebrow">${ico('lamp')}Festive planner</p><h1 class="page">Know the season. <mark>Stock up</mark> before it.</h1>
       <p class="lede">Festivals and special days decide what goes in the basket: diyas before Diwali, rakhis before Raksha Bandhan, til and jaggery before Sankranti, a grooming kit or perfume before Father's Day. Here is every festival and special day of the next twelve months (the calendar keeps itself up to date for years ahead), what is traditionally bought for it, and what Blinkit had on the shelf on the one day it was observed. It tells you <b>when</b> to have stock ready. It cannot tell you <b>how much</b> more will sell: there are no orders in the data.</p>
       ${up.length ? '' : `<p class="banner warn">${ico('alert')}<span>The calendar runs to ${esc(F.festivals[F.festivals.length - 1].end)} and every festival in it has passed. Extend it in src/seasonal/festive.py.</span></p>`}
@@ -1591,7 +1608,7 @@
       <h2>In season, month by month</h2><p class="sub">Which product types each month's festivals call for, read off the calendar. A filled cell is a festival, not a measured sales peak.</p>
       <div class="panel"><div class="tbl" id="f-season"></div></div>
       <div class="panel mt"><div class="lists">
-        <div><h4>What this page knows</h4><ul><li>When each festival and special day falls: cited calendars to Oct 2027 ${chip('EXTERNAL')}, computed for every year after ${chip('METHOD')}</li><li>Which product types are traditionally bought for it: a rule of the planner ${chip('METHOD')}</li><li>Which matching products Blinkit listed, at what price, in or out of stock, on ${esc(snapDay)} ${chip('REAL')}</li></ul></div>
+        <div><h4>What this page knows</h4><ul><li>When each festival and special day falls: cited calendars to Oct 2027 ${chip('EXTERNAL')}, computed for every year after ${chip('METHOD')}</li><li>Which product types are traditionally bought for it: a rule of the planner ${chip('METHOD')}</li><li>Which matching products Blinkit listed, at what price, in or out of stock, on the day it was collected</li></ul></div>
         <div><h4>What it does not know</h4><ul><li>How much more anything sells at a festival, or for how long: there are no orders in the data</li><li>How festive stock behaves: the one observed day, in July, was not a festival</li><li>How much to stock: that is yours to set, from your own sales</li></ul></div>
         <div><h4>What would change that</h4><ul><li>Logging these products daily through Diwali, sized on <a href="#plan">Plan the panel</a></li><li>A store's own sales history, which this project does not have</li></ul></div>
       </div></div>`;
@@ -1616,9 +1633,9 @@
     };
     const groupCard = (k, f) => {
       const g = G[k];
-      const body = g.listings ? `<p class="note">${g.products} product${g.products === 1 ? '' : 's'} in ${g.listings} listings on ${esc(snapDay)} · ${pct(g.out_of_stock_share, 0)} out of stock that day${g.median_price != null ? ` · typical price ${rs(g.median_price)}` : ''}</p>
+      const body = g.listings ? `<p class="note">${g.products} product${g.products === 1 ? '' : 's'} in ${g.listings} Blinkit listings · ${pct(g.out_of_stock_share, 0)} out of stock${g.median_price != null ? ` · typical price ${rs(g.median_price)}` : ''}</p>
           <ul class="mini">${g.examples.slice(0, 4).map(e => `<li>${thumb(e.name, e.category, e.pack)}<span>${esc(e.name)}${e.pack ? ` <i>${esc(e.pack)}</i>` : ''}</span><b>${e.price != null ? rs(e.price) : '—'}</b><span class="pill ${e.in_stock ? 'yes' : 'bad'}">${e.in_stock ? 'in stock' : 'out'}</span></li>`).join('')}</ul>`
-        : `<p class="note"><b>None listed on ${esc(snapDay)}.</b> Nothing listed that day matched. A gap to fill before ${esc(f.name)}, or a product the July shelf simply did not carry yet.</p>`;
+        : `<p class="note"><b>None listed on Blinkit.</b> Nothing on the shelf matched. A gap to fill before ${esc(f.name)}, or a product the shelf simply did not carry yet.</p>`;
       return `<div class="panel fgroup"><h3><span class="gi">${ico(g.icon)}</span>${esc(g.label)} ${chip('REAL')}</h3>${body}</div>`;
     };
     const drawDetail = () => {
@@ -1749,7 +1766,7 @@
       ${K ? `<h2>Data contracts ${chip('METHOD')}</h2>
       <p class="sub">The invariants every model relies on, checked as one gate right after the data layer is built (${esc(String(K.seconds))} s on ${esc((K.checked || '').slice(0, 10))}). Each one has a planted-violation test that it must catch. <code>python -m src.pipeline.contracts</code></p>
       <div class="contracts">${K.items.map(c => `<div class="ct" title="${esc(c.id)}"><span class="pill ${c.ok ? 'ok' : 'bad'}">${c.ok ? ico('check') + 'Holds' : 'Broken'}</span><span class="ct-r">${pe(c.rule)}</span><small>${pe(c.observed)}<br><span class="ct-ref">${esc(c.id)} · ${esc(c.ref)}</span></small></div>`).join('')}</div>` : ''}
-      <div class="legend" style="margin-top:var(--s6)"><span>${chip('REAL')} built only from the observed day</span><span>${chip('SYNTHETIC')} uses the simulated panel</span></div>
+      <div class="legend" style="margin-top:var(--s6)"><span><b>No tag</b>: built only from the Blinkit data</span><span>${chip('SYNTHETIC')} uses the simulated panel</span></div>
       ${groups.map(([g, label]) => `<h2>${pe(GROUP[g] || label)}</h2><div class="panel" style="padding:8px var(--pad)">${R.steps.filter(s => s.group === g).map(s => `<details class="step"><summary>
           <span class="pill ${state(s)[0]}">${state(s)[1]}</span><span class="nm" title="${esc(s.step)}">${pe(s.step)}</span><span class="wh">${pe(s.what.replace(/\s*\((REAL|SYNTHETIC)[^)]*\)/g, ''))} ${s.outputs.map(o => o.scope ? chip(o.scope) : '').filter((x, i, a) => a.indexOf(x) === i).join(' ')}</span>
           <span class="tm"><i><b style="width:${Math.max(2, 100 * Math.sqrt(s.seconds / max))}%"></b></i><span>${secs(s.seconds)}</span></span></summary>
@@ -2079,7 +2096,7 @@
     const items = [
       nf ? `<b>${esc(nf.name)}</b> ${nd > 0 ? `in ${nd} day${nd === 1 ? '' : 's'}` : 'is on now'}: time to stock ${esc(nf.groups.slice(0, 2).map(k => D('festive').groups[k].label.toLowerCase()).join(' and '))}` : '',
       `<b>Lab</b> cheapest of four: ${order.map(([p, s]) => `${esc(p)} ${pct(s, 0)}`).join(' · ')}`,
-      `<b>Seen</b> ${int(M.mix.reduce((s, m) => s + m.real, 0))} Blinkit listings on 10 Jul 2026`,
+      `<b>Blinkit</b> ${int(M.mix.reduce((s, m) => s + m.real, 0))} listings collected by hand`,
       `<b>${M.run.passed} of ${M.run.tests}</b> tests passing`,
       ev ? `<b>Analyst</b> turns down ${ev.tuning.refused_when_it_must + ev.holdout.refused_when_it_must} of ${ev.tuning.must_refuse + ev.holdout.must_refuse} questions it must` : '<b>Analyst</b> answers with its sources',
       `<b>${M.ledger.numbers}</b> doc numbers checked against saved results`,
