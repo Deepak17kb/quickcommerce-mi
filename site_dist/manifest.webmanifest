@@ -1,6 +1,6 @@
 {
- "name": "Qcom · Quick-commerce intelligence",
- "short_name": "Qcom",
+ "name": "ShelfPulse · Quick-commerce intelligence",
+ "short_name": "ShelfPulse",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
