@@ -43,6 +43,8 @@ def test_the_tour_visits_only_pages_that_exist_and_can_be_started():
     stops = re.findall(r"\{page: '(\w+)'", tour)
     assert len(stops) >= 5 and all(f'PAGES.{p} = ' in app for p in stops), stops
     assert 'id="tour-spot"' in html and 'id="tour-card"' in html
+    # the tab icon travels inside the page: GitHub Pages serves files only, and there is no favicon.ico among them
+    assert 'rel="icon" type="image/svg+xml" href="data:image/svg+xml,' in html and 'href="favicon.ico"' not in html
     assert 'data-tour' in app.split('PAGES.home = ')[1].split('PAGES.data = ')[0]     # the button on Home
     assert "name: 'Take the tour'" in app                                             # and the palette entry
     assert '!automated' in app.split('// ?tour in the address starts the tour')[1][:300]   # checks see the pages undimmed
@@ -68,7 +70,9 @@ def test_built_site_is_self_contained_and_complete():
     # the only outside resource is the font stylesheet; no script is loaded from anywhere
     assert not re.search(r'<script[^>]+src=', html)
     head, body = html.split('</head><body>', 1)
-    assert set(re.findall(r'https?://[^"\')\s]+', head)) <= {'https://fonts.googleapis.com', 'https://fonts.gstatic.com', FONTS}
+    # (the SVG namespace inside the inline tab icon is a name, never fetched)
+    assert set(re.findall(r'https?://[^"\')\s]+', head)) <= {'https://fonts.googleapis.com', 'https://fonts.gstatic.com', FONTS,
+                                                              'http://www.w3.org/2000/svg'}
     assert body.lstrip().startswith('<div class="ticker"')                    # nothing of the body leaked into the head
     assert 'claude.use' not in html                                          # it does not depend on an artifact host
 
