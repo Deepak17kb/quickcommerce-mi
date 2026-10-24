@@ -1,0 +1,4 @@
+{
+  "api": "",
+  "_api": "The base URL of the project's public Python analyst (render.yaml deploys it, e.g. https://qcom-analyst.onrender.com/). The live site asks it questions when it answers, and its own engine otherwise. Empty: the page always answers with its own engine. The environment variable QCOM_API overrides this at build time."
+}

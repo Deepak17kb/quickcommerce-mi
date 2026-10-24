@@ -1,0 +1,38 @@
+# Pages — the live site updates itself: every push to main that changes site_dist/ (written by each site build,
+# scripts/build_site.py) is checked and deployed to https://deepak17kb.github.io/quickcommerce-mi/.
+# Publishing is therefore a commit and a push; python scripts/deploy_pages.py does both.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['site_dist/**', '.github/workflows/pages.yml', 'scripts/deploy_pages.py']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Check and deploy site_dist
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The staged site is complete (every data block, the analyst engine, nothing extra)
+        run: python3 scripts/deploy_pages.py --check site_dist
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site_dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

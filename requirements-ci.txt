@@ -1,0 +1,18 @@
+# Exact versions the project was last run and tested with (2026-10-20, Python 3.14 locally, 3.13 in CI).
+# CI installs this for the full test suite; requirements.txt stays the looser list for working on the project.
+pandas==3.0.0
+numpy==2.4.2
+pyarrow==23.0.1
+scipy==1.17.0
+scikit-learn==1.8.0
+lightgbm==4.7.0
+statsmodels==0.14.6
+rapidfuzz==3.14.6
+openpyxl==3.1.5
+xlsxwriter==3.2.9
+matplotlib==3.10.8
+pillow==12.1.0
+pyyaml==6.0.3
+anthropic==0.102.0
+httpx==0.28.1
+pytest

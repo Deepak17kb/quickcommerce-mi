@@ -97,6 +97,7 @@
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5"/>',
     upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
     plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>',
+    download: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
     cart: '<path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.5L20.5 8H6.1"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/>',
     share: '<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1"/>',
     command: '<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/>',
@@ -150,15 +151,43 @@
     if (!engine) engine = window.QCAnalyst.create(D('analyst'), {whatif: () => D('whatif')});
     return engine;
   }
-  let liveReady = Promise.resolve(false);          // resolves once it is known whether the local server is there
+  /* Where questions go. The server that sent this page answers first (localhost, Wi-Fi, or a public host). A page
+     on GitHub Pages has no server of its own: if meta.api names the project's public analyst (site/config.json), it
+     asks there. A free host sleeps when idle, so while it wakes up the page answers with its own engine, and it
+     switches to the live analyst as soon as the host answers. Products are kept on a server only if it keeps them. */
+  let API = '', writable = false;
+  const remoteApi = (() => {                       // https, or this machine while trying it out
+    const a = String(D('meta').api || '').trim();
+    return /^(https:\/\/[^\s"'<>]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s"'<>]*)?)$/.test(a) ? a.replace(/\/?$/, '/') : '';
+  })();
+  function probe(base, ms) {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = setTimeout(() => ctl && ctl.abort(), ms);
+    return fetch(base + 'api/health', {signal: ctl ? ctl.signal : undefined, cache: 'no-store'})
+      .then(r => (r.ok ? r.json() : null)).catch(() => null).finally(() => clearTimeout(timer));
+  }
+  function goLive(base, j) {
+    API = base; live = true; writable = !base && j.writes !== false;
+    const m = $('#dock-mode'); if (m) m.textContent = 'live from the project analyst';
+  }
+  let waking = null;
+  function wakeRemote() {                          // one patient probe at a time; a sleeping free host takes up to a minute
+    if (!remoteApi || live || waking) return;
+    waking = probe(remoteApi, 75000).then(j => { waking = null; if (j && j.ok) goLive(remoteApi, j); });
+  }
+  let liveReady = Promise.resolve(false);          // resolves once it is known whether a server is there
   if (typeof fetch === 'function' && typeof location !== 'undefined' && /^https?:$/.test(String(location.protocol))) {
-    liveReady = fetch('api/health').then(r => (r.ok ? r.json() : null)).then(j => {
-      live = !!(j && j.ok);
-      const m = $('#dock-mode'); if (m && live) m.textContent = 'live from the project analyst';
-      if (j && j.lan && j.lan.urls && j.lan.urls.length) showLan(j.lan);
-      return live;
+    liveReady = probe('', 8000).then(j => {
+      if (j && j.ok) {
+        goLive('', j);
+        if (j.lan && j.lan.urls && j.lan.urls.length) showLan(j.lan);
+        return true;
+      }
+      if (!remoteApi) return false;
+      return probe(remoteApi, 5000).then(r => { if (r && r.ok) { goLive(remoteApi, r); return true; } wakeRemote(); return false; });
     }).catch(() => false);
   }
+  const serverKeeps = async () => (await liveReady) && writable;   // products go to a server only if it keeps them
   /* started with --lan: this computer is shown how to open Qcom on a phone or tablet (other devices never get this) */
   function showLan(lan) {
     const pill = $('#lan-pill'), pop = $('#lan-pop');
@@ -221,7 +250,7 @@
     const ctl = typeof AbortController === 'function' ? new AbortController() : null;
     const timer = setTimeout(() => ctl && ctl.abort(), 30000);
     try {
-      const r = await fetch('api/ask', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({q}), signal: ctl ? ctl.signal : undefined});
+      const r = await fetch(API + 'api/ask', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({q}), signal: ctl ? ctl.signal : undefined});
       if (!r.ok) return null;
       const j = await r.json();
       return j && typeof j.answer_summary === 'string' && Array.isArray(j.claims) ? j : null;
@@ -247,7 +276,10 @@
   const daysTo = s => dayDiff(dOf(s), today0());
   const shift = (s, n) => { const d = dOf(s); d.setDate(d.getDate() + n); return d; };
   const fmtD = (d, o) => d.toLocaleDateString('en-IN', Object.assign({day: 'numeric', month: 'short'}, d.getFullYear() !== today0().getFullYear() ? {year: 'numeric'} : {}, o || {}));
-  const upcoming = () => D('festive').festivals.filter(f => daysTo(f.end) >= 0);
+  /* festivals not yet over, soonest first; `days` keeps only those starting within that many days (the calendar runs
+     years ahead, computed by src/seasonal/almanac.py, so the page always has the next ones without a rebuild) */
+  const upcoming = days => D('festive').festivals.filter(f => daysTo(f.end) >= 0 && (days == null || daysTo(f.start) <= days));
+  const firstOfEach = list => list.filter((f, i) => list.findIndex(g => g.name === f.name) === i);   // the next Diwali, not every one
   /* where a festival stands today, given how many days ahead the shelf must be ready */
   function festState(f, lead) {
     const s = daysTo(f.start), by = shift(f.start, -lead), left = dayDiff(by, today0());
@@ -273,6 +305,7 @@
     const q = internal(shown), m = {q: shown, a: null};
     thread.push(m);
     renderThreads();
+    if (!live) wakeRemote();
     let a = live ? await fromServer(q) : null;
     if (a) a.mode = 'project analyst, live';
     else {
@@ -321,7 +354,7 @@
     const out = [], seen = new Set(), add = it => { const k = it.kind + '|' + it.name.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(it); } };
     for (const c of D('explorer').chains) add({kind: 'listing', name: c.name, cat: c.category, pack: c.pack, meta: `Followed listing · ${rs(c.dec.price)} on Blinkit`, go: () => { mem.set('listing', c.name); goTo('listings'); }});
     for (const p of userCache) add({kind: 'yours', name: p.name, cat: p.category, pack: p.pack, meta: 'Your product', go: () => goTo('listings')});
-    for (const f of upcoming()) add({kind: 'festival', name: f.name, meta: `Festival · ${fmtD(dOf(f.day), {weekday: 'short'})}`, go: () => { mem.set('festive', Object.assign(mem.get('festive', {}), {fest: f.key})); goTo('festive'); }});
+    for (const f of firstOfEach(upcoming())) add({kind: 'festival', name: f.name, meta: `${/\b(Day|Eve)\b/.test(f.name) ? 'Special day' : 'Festival'} ·${fmtD(dOf(f.day), {weekday: 'short'})}`, go: () => { mem.set('festive', Object.assign(mem.get('festive', {}), {fest: f.key})); goTo('festive'); }});
     for (const g of Object.values(D('festive').groups)) for (const e of g.examples) add({kind: 'item', name: e.name, cat: e.category, pack: e.pack, meta: `${g.label} · listed on 10 Jul`, go: () => { mem.set('festive', Object.assign(mem.get('festive', {}), {q: e.name})); goTo('festive'); }});
     return out;
   }
@@ -601,8 +634,17 @@
       `<stop offset="0" style="stop-color:hsl(var(--h) 72% 64%)"/><stop offset="1" style="stop-color:hsl(var(--h) 60% 44%)"/></linearGradient></defs>` +
       `<ellipse class="sh" cx="120" cy="147" rx="60" ry="7"/>${shapes[kind] || shapes.box}</svg>`;
   }
-  const pic = (name, cat, pack, inner) => `<span class="pic ps" style="--h:${hueOf(name, cat)}">${packshot(name, cat, pack)}${inner || ''}</span>`;
-  const thumb = (name, cat, pack) => `<span class="thumb ps" style="--h:${hueOf(name, cat)}">${packshot(name, cat, pack)}</span>`;
+  /* a real photo where Open Food Facts has one that matched strictly (scripts/fetch_product_photos.py), over the drawn
+     packshot, which shows again if the photo cannot load. The tooltip says what the photo shows and whose it is. */
+  const photoOf = (name, pack) => { try { return (D('photos') || {})[`${name}|${pack || ''}`] || null; } catch (e) { return null; } };
+  /* a photo shows once it has loaded and is removed if it fails, so the drawing under it is never covered by a blank */
+  const photoTag = src => `<img class="prod-photo" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('on')" onerror="this.remove()">`;
+  const photoImg = ph => photoTag(ph.image)
+    + `<span class="photo-credit" data-tip="${esc(`Photo: ${ph.shows}. Open Food Facts contributors, ${ph.license}.`)}">${ico('camera')}</span>`;
+  const pic = (name, cat, pack, inner) => { const ph = photoOf(name, pack);
+    return `<span class="pic ps${ph ? ' has-photo' : ''}" style="--h:${hueOf(name, cat)}">${packshot(name, cat, pack)}${ph ? photoImg(ph) : ''}${inner || ''}</span>`; };
+  const thumb = (name, cat, pack) => { const ph = photoOf(name, pack);
+    return `<span class="thumb ps${ph ? ' has-photo' : ''}" style="--h:${hueOf(name, cat)}">${packshot(name, cat, pack)}${ph ? photoTag(ph.image) : ''}</span>`; };
 
   /* one listing as a product card: its Blinkit price, the best of the other three, and how fast it arrives */
   function productCard(c, i, pick) {
@@ -669,6 +711,12 @@
       </div>
       ${tiles([[int(M.rows), 'observations in total'], [int(obs), 'seen on Blinkit on one day'], [int(sim), 'simulated, and tagged Lab'],
         [M.stores, 'stores'], [int(M.products), 'catalog products'], [`${M.run.ok} of ${M.run.steps}`, 'pipeline steps passing']])}
+      ${mem.get('welcomed', 0) ? '' : `<div class="welcome" id="welcome"><div><b>New here? Three things to try</b>
+          <ol><li><a href="#listings">Tap a product</a> and see every app's price, what the models predict, and where to buy it</li>
+            <li><a href="#simulate">Ask "what if"</a> in a sentence: what if Blinkit cuts prices 5%?</li>
+            <li><a href="#festive">Plan for the next festival</a> or special day, with what to stock and when</li></ol>
+          <p class="fine" style="margin:6px 0 0">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump anywhere, or ask the analyst in plain words.</p></div>
+          <button type="button" class="linkish" id="welcome-close" aria-label="Hide this">Got it</button></div>`}
       ${festBanner()}
       <h2>Pick a mode</h2>
       <p class="sub">Three things you can do with it. Each opens on a working example.</p>
@@ -694,6 +742,8 @@
         <div><h4>What would change that</h4><ul><li>A hand-logged panel, sized on <a href="#plan">Plan the panel</a></li><li>Human labels on product pairs</li><li>The collection record for the store column</li></ul></div>
       </div></div>
       <p class="foot-note"><b>Qcom</b> · built ${esc(M.built)} from saved outputs of the quickcommerce-mi project. Portfolio project by Deepak, B.Tech CSE (Data Science with AI), LPU.</p>`;
+    const wc = $('#welcome-close');
+    if (wc) wc.addEventListener('click', () => { mem.set('welcomed', 1); const w = $('#welcome'); if (w && w.remove) w.remove(); });
     homeYours();
   };
 
@@ -744,8 +794,18 @@
         <div class="panel"><h3>What the observed day does say ${chip('REAL')}</h3><p class="note">Records of the same product run out together: ${fix(S.stock.lift, 1)} times the base rate. Category explains little of it.</p>
           ${[['Any record is out of stock', S.stock.rate], ['Another record of the same product is out, given one is', S.stock.cond], ['The same, with stock shuffled within category', S.stock.cat]]
             .map(([l, val]) => `<div class="row"><div class="lab">${l}</div><div class="track"><i class="fill ink" style="width:${160 * val}%"${tipAttr(`${l}: ${pct(val)}`)}></i></div><div class="num">${pct(val)}</div></div>`).join('')}</div>
-      </div>`;
+      </div>
+      ${photoCredits()}`;
   };
+  /* where the product photos come from, each one linked: CC BY-SA asks for credit, and a reader should be able to check */
+  function photoCredits() {
+    let ph = {};
+    try { ph = D('photos') || {}; } catch (e) { ph = {}; }
+    const list = Object.values(ph);
+    return `<h2>Product photos ${chip('EXTERNAL')}</h2>
+      <p class="sub">${list.length ? `${list.length} product${list.length === 1 ? ' shows a photo' : 's show a photo'}` : 'No product shows a photo yet'} from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">Open Food Facts</a>, an open database whose photos anyone may reuse with credit (CC BY-SA 3.0). A photo is used only when the brand and the product name match ours closely; its caption says exactly what it shows, which can be another pack size of the same product. Everything else keeps a drawn picture. Photos from Google Images or from the apps themselves are not used: they belong to the brands and the apps, and copying them is not allowed.</p>
+      ${list.length ? `<div class="panel"><ul class="credits">${list.map(x => `<li><span class="thumb ps has-photo">${photoTag(x.image)}</span><span>${esc(x.shows)}${x.same_pack ? '' : ' <span class="pill">another pack size</span>'}<span class="fine"> · ${esc(x.credit || 'Open Food Facts contributors')}, ${esc(x.license || 'CC BY-SA 3.0')} · <a href="${esc(x.source)}" target="_blank" rel="noopener noreferrer">source</a></span></span></li>`).join('')}</ul></div>` : ''}`;
+  }
 
   PAGES.models = v => {
     const M = D('models');
@@ -776,6 +836,23 @@
   };
 
   /* ---------------------------------------------------------------- simulate */
+  /* ---- the plain-language layer of Simulate and Optimize: ask in a sentence, answer in a sentence and a picture */
+  const per100 = x => Math.round(100 * clamp(+x || 0, 0, 1));
+  const optSel = (id, opts, cur, label) => `<select id="${id}" class="inline" aria-label="${esc(label)}">${opts.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(cur) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  /* a hundred products as squares: how many of them this app is the cheapest for */
+  const waffle = (n, cls, label) => `<figure class="waffle-fig"><div class="waffle ${cls}" role="img" aria-label="${esc(label)}: ${n} of 100 products">${Array.from({length: 100}, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('')}</div><figcaption><b>${n}</b> of 100 · ${esc(label)}</figcaption></figure>`;
+  const howTo = steps => `<ol class="howto">${steps.map((s, i) => `<li><span>${i + 1}</span>${s}</li>`).join('')}</ol>`;
+  const GLOSSARY = [
+    ['Cheapest app for a product', 'Of the four apps, the one with the lowest price for it. "18 of every 100 products" means it is cheapest on 18 in 100.'],
+    ['The other apps follow', 'When one app moves its price, the others move theirs part of the way, as they do in the Lab. "Stay put" means they do not react at all.'],
+    ['A check', 'One look at every app\'s prices and stock. The Lab looks twice a day, morning and evening, so twelve checks are six days.'],
+    ['pp (percentage points)', 'The plain difference between two percentages: going from 18% to 24% is +6 pp.'],
+    ['90% of runs', 'Each answer was simulated many times with different luck. Nine runs in ten land inside this range.'],
+    ['Lab', 'The simulated 30-day market the models were fitted on. It shows what those fitted rules imply, not what the market will actually do.'],
+  ];
+  const glossary = () => `<details class="gloss"><summary>${ico('book')}What do these words mean?</summary><dl>${GLOSSARY.map(([k, d]) => `<dt>${esc(k)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>`;
+  const plainLine = s => `<p class="plain">${ico('spark')}<span>${s}</span></p>`;
+
   PAGES.simulate = v => {
     const W = D('whatif'), X = D('explorer');
     const st = Object.assign({tab: 'move', mover: 0, group: 'All', move: -3, react: true, pcat: Object.keys(W.frontier)[0], pcut: 5, li: 0, rung: null}, mem.get('sim', {}));
@@ -783,29 +860,47 @@
     st.mover = clamp(st.mover | 0, 0, 3); st.move = clamp(Math.round(+st.move) || 0, -10, 10); st.pcut = clamp(st.pcut | 0, 0, 10);
     st.li = st.li | 0; st.react = st.react !== false;
     const save = () => mem.set('sim', st);
-    v.innerHTML = `<p class="eyebrow">${ico('sliders')}Mode · Simulate</p><h1 class="page">Move a price, see who ends up <mark>cheapest</mark></h1>
-      <p class="lede">${LAB_NOTE} The simulator had to reproduce the status quo before any of these runs were trusted. A check is one round of prices and stock, morning or evening, so twelve checks are six days.</p>
-      ${tabsHtml('sim-tabs', [['move', 'A price move'], ['promo', 'Promo or list price'], ['outage', 'Stock runs out'], ['listing', 'One product']], st.tab)}<div id="sim-body"></div>`;
+    v.innerHTML = `<p class="eyebrow">${ico('sliders')}Mode · Simulate</p><h1 class="page">What if an app changes its prices? See who ends up <mark>cheapest</mark></h1>
+      <p class="lede">Pick a change, read the answer in plain words. Everything here was simulated in advance on the Lab market ${chip('SYNTHETIC')}: it shows what the fitted rules imply, not what the apps will actually do, and never sales or profit.</p>
+      ${howTo(['Choose a story below, or tap a ready-made one', 'Read the answer: out of every 100 products, how many each app is cheapest for', 'Open the details for the charts and the uncertainty'])}
+      ${glossary()}
+      ${tabsHtml('sim-tabs', [['move', 'Change a price'], ['promo', 'Sale or lower price?'], ['outage', 'An app runs out'], ['listing', 'One product']], st.tab)}<div id="sim-body"></div>`;
     const body = $('#sim-body');
+    const PRESETS = [['Diwali sale: Blinkit cuts 5%', 0, -5, 'All'], ['Price war: Flipkart cuts 10%', 2, -10, 'All'], ['Blinkit raises 3%', 0, 3, 'All'],
+      ['Instamart cuts snacks 5%', 1, -5, 'Snacks & Munchies'], ['BigBasket cuts staples 7%', 3, -7, 'Staples & Grains']];
     const draw = {
       move() {
-        body.innerHTML = `<div class="controls">
-            <div class="ctl"><span>Who moves</span>${segs('s-mover', P.map((p, i) => [i, p]), st.mover)}</div>
-            <div class="ctl"><label for="s-group">Category</label>${select('s-group', W.groups, st.group, 'Category')}</div>
-            <div class="ctl"><label for="s-move">Price move <b id="s-move-v"></b></label><input type="range" id="s-move" min="-10" max="10" step="1" value="${st.move}"></div>
-            <label class="toggle"><input type="checkbox" id="s-react"${st.react ? ' checked' : ''}> Competitors react</label></div>
+        const size = Math.abs(st.move) || 3, dir = st.move > 0 ? 'raise' : st.move < 0 ? 'cut' : 'keep';
+        body.innerHTML = `<div class="ask-card">
+            <p class="sentence">If ${optSel('s-mover', P.map((p, i) => [i, p]), st.mover, 'Which app')}
+              ${optSel('s-dir', [['cut', 'cuts'], ['raise', 'raises'], ['keep', 'keeps']], dir, 'Cut or raise')} its prices
+              <span id="s-by">by ${optSel('s-size', Array.from({length: 10}, (_, i) => [i + 1, (i + 1) + '%']), size, 'By how much')}</span>
+              on ${optSel('s-group', W.groups.map(g => [g, g === 'All' ? 'all products' : g]), st.group, 'Which products')},
+              and the other apps ${optSel('s-react', [['yes', 'follow'], ['no', 'stay put']], st.react ? 'yes' : 'no', 'Do the others react')} …</p>
+            <div class="sugg presets"><span class="fine">Or try:</span>${PRESETS.map((x, i) => `<button type="button" data-preset="${i}">${esc(x[0])}</button>`).join('')}</div>
+          </div>
           <div id="s-out"></div>`;
         const out = $('#s-out');
         const render = () => {
           const m = st.mover, mv = st.move;
-          $('#s-move-v').textContent = mv === 0 ? 'none' : (mv < 0 ? `cut ${-mv}%` : `raise ${mv}%`);
-          $$('#s-mover button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === m)));
+          const by = $('#s-by'); if (by) by.hidden = mv === 0;
           const view = st.react ? 'strategic' : 'static', ov = st.react ? 'static' : 'strategic';
           const c = W.cells[`${P[m]}|${st.group}|${mv || -1}|${view}`], o = W.cells[`${P[m]}|${st.group}|${mv || -1}|${ov}`];
           if (!c) { out.innerHTML = '<p class="note">No run was saved for this combination.</p>'; return; }
           const after = mv === 0 ? c.b : c.s, d = mv === 0 ? [0, 0, 0] : c.d[m], od = mv === 0 ? 0 : o.d[m][1];
           const path = mv === 0 ? c.bp : c.mp, lo = Math.min(...c.bp, ...path), hi = Math.max(...c.bp, ...path), pad = Math.max(0.01, (hi - lo) * 0.15);
-          out.innerHTML = tiles([[`${pct(c.b[m])} → ${pct(after[m])}`, `${esc(P[m])}: share of products where it is the cheapest of four`],
+          const nb = per100(c.b[m]), na = per100(after[m]), other = per100((mv === 0 ? c.b : o.s)[m]), who = esc(P[m]);
+          const where = st.group === 'All' ? 'products' : `${esc(st.group)} products`;
+          const verb = mv === 0 ? 'keeps its prices' : `${mv < 0 ? 'cuts' : 'raises'} its prices by ${Math.abs(mv)}%`;
+          const answer = mv === 0
+            ? `Today ${who} is the cheapest of the four apps for <b>${nb} of every 100</b> ${where}. Pick a cut or a raise to see what changes.`
+            : `If ${who} ${verb}, it becomes the cheapest app for <b>${na} of every 100</b> ${where}, ${na === nb ? 'the same as' : na > nb ? `up from` : 'down from'} ${na === nb ? 'today' : `${nb} today`}.
+               ${st.react ? `That is with the other apps following, as they do in the Lab; if they stayed put it would be ${other} of 100.` : `That is if the other apps stay put; in the Lab they follow, which would make it ${other} of 100.`}`;
+          const ranks = P.map((p, j) => [p, per100(after[j]), j]).sort((x, y) => y[1] - x[1]);
+          out.innerHTML = `<div class="answer-card">${chip('SYNTHETIC')}<p class="answer">${answer}</p>
+              <div class="waffles">${waffle(nb, 'base', 'today')}${mv === 0 ? '' : waffle(na, 'c' + m, 'after the move')}</div>
+              <p class="fine" style="margin:0">After the move, cheapest app per 100 ${where}: ${ranks.map(([p, n, j]) => `<span class="rank"><i class="pdot c${j}"></i>${esc(p)} ${n}</span>`).join(' ')} (a tie counts for every tied app).</p></div>
+            <details class="more" open><summary>The details: numbers, uncertainty and the next six days</summary>` + tiles([[`${pct(c.b[m])} → ${pct(after[m])}`, `${esc(P[m])}: share of products where it is the cheapest of four`],
               [`${sgn(d[1])} pp`, `change, 90% of runs between ${sgn(d[0])} and ${sgn(d[2])}`],
               [`${sgn(od)} pp`, st.react ? 'if competitors did not react' : 'if competitors did react'], [int(c.n), 'products on all four platforms']]) +
             `<div class="grid2"><div class="panel"><h3>Cheapest-of-four share, before and after</h3><p class="note">Ties count for each tied platform, so the four shares add to more than 100%.</p>
@@ -815,19 +910,30 @@
             <div class="panel"><h3>${esc(P[m])} over the next twelve checks</h3><p class="note">${m === 0 ? 'When Blinkit moves and rivals react, they close part of the gap from the next check on.' : 'Nobody follows this platform in the fitted dynamics, so both views agree.'}</p>
               <div class="legend"><span><i class="sw dash"></i>no move</span><span><i class="sw line"></i>with the move</span></div>
               ${lineChart([{cls: 'lb', pts: c.bp.map((y, i) => [i + 1, y])}, {cls: 'l0', pts: path.map((y, i) => [i + 1, y])}],
-                {xmax: 12.4, xticks: [1, 3, 6, 9, 12], xfmt: t => t, ymin: lo - pad, ymax: hi + pad, yfmt: t => pct(t, 0), label: 'Share by check'})}</div></div>`;
+                {xmax: 12.4, xticks: [1, 3, 6, 9, 12], xfmt: t => t, ymin: lo - pad, ymax: hi + pad, yfmt: t => pct(t, 0), label: 'Share by check'})}</div></div></details>`;
           save();
         };
-        onSeg('s-mover', val => { st.mover = clamp(+val | 0, 0, 3); render(); });
+        const setMove = () => {                          // the sentence's verb and size make the signed move
+          const d = String(($('#s-dir') || {}).value || 'cut'), n = clamp(Math.round(+(($('#s-size') || {}).value)) || 3, 1, 10);
+          st.move = d === 'keep' ? 0 : d === 'raise' ? n : -n;
+        };
+        $('#s-mover').addEventListener('change', e => { st.mover = clamp(+e.target.value | 0, 0, 3); render(); });
+        $('#s-dir').addEventListener('change', () => { setMove(); render(); });
+        $('#s-size').addEventListener('change', () => { setMove(); render(); });
         $('#s-group').addEventListener('change', e => { if (W.groups.includes(e.target.value)) st.group = e.target.value; render(); });
-        $('#s-move').addEventListener('input', e => { st.move = clamp(Math.round(+e.target.value) || 0, -10, 10); render(); });
-        $('#s-react').addEventListener('change', e => { st.react = e.target.checked; render(); });
+        $('#s-react').addEventListener('change', e => { st.react = e.target.value !== 'no'; render(); });
+        body.querySelector('.presets').addEventListener('click', e => {
+          const b = e.target.closest('[data-preset]'), x = b && PRESETS[+b.dataset.preset];
+          if (!x) return;
+          Object.assign(st, {mover: x[1], move: x[2], group: W.groups.includes(x[3]) ? x[3] : 'All', react: true});
+          draw.move();
+        });
         render();
       },
       promo() {
         const cats = Object.keys(W.frontier);
         if (!cats.includes(st.pcat)) st.pcat = cats[0];
-        body.innerHTML = `<div class="controls"><div class="ctl"><label for="p-cat">Category</label>${select('p-cat', cats, st.pcat, 'Category')}</div>
+        body.innerHTML = `${plainLine('A <b>sale</b> (a short promo) and a <b>lower everyday price</b> both make Blinkit cheaper. In the Lab a sale also makes products sell out a little sooner. Pick a category and a discount to compare the two.')}<div class="controls"><div class="ctl"><label for="p-cat">Category</label>${select('p-cat', cats, st.pcat, 'Category')}</div>
           <div class="ctl"><label for="p-cut">Blinkit price cut <b id="p-cut-v"></b></label><input type="range" id="p-cut" min="0" max="10" step="1" value="${st.pcut}"></div></div><div id="p-out"></div>`;
         const render = () => {
           const F = W.frontier[st.pcat], k = st.pcut;
@@ -849,7 +955,7 @@
       },
       outage() {
         const O = X.outage, top = Math.max(...O.lengths.map(l => Math.abs(l[1])));
-        body.innerHTML = `<p class="note" style="max-width:76ch">A platform that is out of stock cannot be the cheapest option. Each run takes every listing of one platform out of stock now, for a length drawn from the fitted restock model, and follows ${O.horizon} checks.</p>
+        body.innerHTML = `${plainLine('When one app runs out of stock it cannot be the cheapest choice, so the other apps pick up those products. Each row is one app running out; each number is how much another app gains (blue) or the app itself loses (orange).')}<p class="note" style="max-width:76ch">A platform that is out of stock cannot be the cheapest option. Each run takes every listing of one platform out of stock now, for a length drawn from the fitted restock model, and follows ${O.horizon} checks.</p>
           <div class="grid2"><div class="panel"><h3>Who picks up the wins</h3><p class="note">Change in cheapest-and-in-stock share, percentage points. Rows: the platform that runs out. Outlined: its own loss.</p>
             <div class="tbl"><table class="heat"><thead><tr><th class="r">runs out ↓ gains →</th>${P.map(p => `<th>${esc(p.split(' ').pop())}</th>`).join('')}</tr></thead><tbody>
             ${P.map(r => `<tr><th class="r">${esc(r)}</th>${P.map(c => { const d = O.matrix[r][c]; return `<td class="${r === c ? 'self' : ''}" style="cursor:default;background:var(--soft);background:color-mix(in srgb, var(--${d[1] < 0 ? 'orange' : 'blue'}) ${Math.round(clamp(Math.abs(d[1]) * 7, 0, 60))}%, var(--card))"${tipAttr(`${r} out: ${c} ${sgn(d[1], 2)} pp (90% of runs ${sgn(d[0], 2)} to ${sgn(d[2], 2)})`)}>${sgn(d[1], 1)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>
@@ -861,7 +967,7 @@
       listing() {
         const C = X.chains;
         st.li = clamp(st.li, 0, C.length - 1);
-        body.innerHTML = `<div class="controls"><div class="ctl"><label for="l-pick">Product</label>${select('l-pick', C.map(c => `${c.name} · ${c.store}`), `${C[st.li].name} · ${C[st.li].store}`, 'Product')}</div>
+        body.innerHTML = `${plainLine('Pick one product and slide through every price it could charge. Each bar shows how often Blinkit would be the cheapest app at that price over the next six days.')}<div class="controls"><div class="ctl"><label for="l-pick">Product</label>${select('l-pick', C.map(c => `${c.name} · ${c.store}`), `${C[st.li].name} · ${C[st.li].store}`, 'Product')}</div>
           <div class="ctl"><label for="l-rung">Candidate price <b id="l-rung-v"></b></label><input type="range" id="l-rung" min="0" step="1"></div></div><div id="l-out"></div>`;
         const render = () => {
           const c = C[st.li], L = c.ladder.slice().sort((a, b) => a.p - b.p), hold = L.findIndex(r => r.k === 'hold');
@@ -899,24 +1005,27 @@
     const st = Object.assign({tab: 'target', mover: 0, group: 'All', target: 40, li: 0, ltarget: 50, cap: 1}, mem.get('opt', {}));
     if (!W.groups.includes(st.group)) st.group = 'All';
     st.mover = clamp(st.mover | 0, 0, 3); st.target = clamp(+st.target || 40, 10, 75); st.ltarget = clamp(+st.ltarget || 50, 10, 90); st.li = st.li | 0; st.cap = +st.cap || 1;
-    v.innerHTML = `<p class="eyebrow">${ico('target')}Mode · Optimize</p><h1 class="page">The <mark>smallest move</mark> that reaches a target</h1>
-      <p class="lede">${LAB_NOTE} The objective is price position or availability. It is never profit: there is no cost or demand data, so a profit-optimal price cannot be computed.</p>
-      ${tabsHtml('opt-tabs', [['target', 'A category target'], ['listing', 'One product'], ['restock', 'Restock order']], st.tab)}<div id="opt-body"></div>`;
+    v.innerHTML = `<p class="eyebrow">${ico('target')}Mode · Optimize</p><h1 class="page">Set a goal, get the <mark>smallest price move</mark> that reaches it</h1>
+      <p class="lede">Say how often you want an app to be the cheapest, and get the smallest price cut that gets there, in plain words. Worked out on the Lab market ${chip('SYNTHETIC')}. The goal is being cheapest or in stock, never profit: there is no cost or sales data to compute profit from.</p>
+      ${howTo(['Say which app, which products, and how often it should be the cheapest', 'Read the answer: the cut to make, with and without the other apps following', 'Open the details for the chart and the saved run'])}
+      ${glossary()}
+      ${tabsHtml('opt-tabs', [['target', 'Reach a goal'], ['listing', 'Best price for one product'], ['restock', 'What to restock first']], st.tab)}<div id="opt-body"></div>`;
     const body = $('#opt-body');
     const draw = {
       target() {
-        body.innerHTML = `<div class="controls"><div class="ctl"><span>Platform</span>${segs('o-mover', P.map((p, i) => [i, p]), st.mover)}</div>
-          <div class="ctl"><label for="o-group">Category</label>${select('o-group', W.groups, st.group, 'Category')}</div>
-          <div class="ctl"><label for="o-target">Target: cheapest on <b id="o-target-v"></b> of products</label><input type="range" id="o-target" min="10" max="75" step="1" value="${st.target}"></div></div><div id="o-out"></div>
-          <h2>The saved optimiser run, for comparison</h2><p class="sub">It searched to a ${pct(O.maxCut, 0)} cut for Blinkit at a ${pct(O.target, 0)} target, by bisection. The slider above reads a coarser grid of whole-percent cuts, so it can differ by a few tenths.</p>
+        const goals = Array.from({length: 14}, (_, i) => 10 + 5 * i);
+        if (!goals.includes(st.target)) st.target = goals.reduce((a, b) => (Math.abs(b - st.target) < Math.abs(a - st.target) ? b : a));
+        body.innerHTML = `<div class="ask-card"><p class="sentence">I want ${optSel('o-mover', P.map((p, i) => [i, p]), st.mover, 'Which app')}
+            to be the cheapest app on ${optSel('o-target', goals.map(g => [g, g + ' of every 100']), st.target, 'How often')}
+            ${optSel('o-group', W.groups.map(g => [g, g === 'All' ? 'products' : g + ' products']), st.group, 'Which products')}.</p></div>
+          <div id="o-out"></div>
+          <h2>The saved optimiser run, for comparison</h2><p class="sub">It searched to a ${pct(O.maxCut, 0)} cut for Blinkit at a ${pct(O.target, 0)} target, by bisection. The answer above reads a coarser grid of whole-percent cuts, so it can differ by a few tenths.</p>
           <div class="panel" style="--num:112px"><div class="legend"><span><i class="sw ring" style="border-color:var(--orange)"></i>rivals do not react</span><span><i class="sw"></i>rivals react</span></div>
             ${O.byCategory.map(r => `<div class="row"><div class="lab">${esc(r.category)}<small>${r.skus} products</small></div><div class="track"><i class="link" style="left:${100 * r.static / 12}%;width:${100 * (r.strategic - r.static) / 12}%"></i><i class="dot ring" style="left:${100 * r.static / 12}%"${tipAttr(`${r.category}: ${fix(r.static, 2)}% cut if rivals did not react`)}></i><i class="dot" style="left:${100 * r.strategic / 12}%"${tipAttr(`${r.category}: ${fix(r.strategic, 2)}% cut with rivals reacting`)}></i></div><div class="num">${fix(r.static, 1)}% → ${fix(r.strategic, 1)}%</div></div>`).join('')}
             ${ticks([0, 3, 6, 9, 12], 12, t => t + '%', 'smallest cut that reaches the target')}
             <p class="note" style="margin-top:12px">Ignoring the response understates the cut needed: ${fix(O.ratio, 2)} times deeper once followers react (median across categories).</p></div>`;
         const render = () => {
           const m = st.mover, T = st.target / 100;
-          $('#o-target-v').textContent = st.target + '%';
-          $$('#o-mover button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === m)));
           const curve = view => { const base = W.cells[`${P[m]}|${st.group}|-1|${view}`]; return [base.b[m]].concat(W.cuts.map(c => W.cells[`${P[m]}|${st.group}|${-c}|${view}`].s[m])); };
           const need = ys => { if (ys[0] >= T) return 0; for (let c = 1; c < ys.length; c++) if (ys[c] >= T) return (c - 1) + (T - ys[c - 1]) / (ys[c] - ys[c - 1]); return null; };
           const S = curve('strategic'), N = curve('static'), ns = need(S), nn = need(N);
@@ -924,23 +1033,31 @@
           const marks = [];
           if (ns) marks.push([ns, T, 'blue', `With rivals reacting: ${fix(ns, 2)}% cut`]);
           if (nn) marks.push([nn, T, 'orange', `If rivals did not react: ${fix(nn, 2)}% cut`]);
-          $('#o-out').innerHTML = (ns == null ? `<p class="banner warn">${ico('alert')}<span>No cut of up to 10% reaches ${st.target}% with rivals reacting. No answer is reported, because larger cuts were not simulated for this page.</span></p>` : '') +
+          const who = esc(P[m]), where = st.group === 'All' ? 'products' : `${esc(st.group)} products`, nb = per100(S[0]);
+          const answer = ns === 0 ? `${who} is already the cheapest app on <b>${nb} of every 100</b> ${where}, so no cut is needed for this goal.`
+            : ns == null ? `No cut of up to 10% gets ${who} there once the other apps follow. Try a smaller goal: larger cuts were not simulated.`
+            : `Cut ${who}'s prices by about <b>${fix(ns, 1)}%</b>. That makes it the cheapest app on ${st.target} of every 100 ${where} (up from ${nb} today), even with the other apps following.
+               ${nn != null && nn > 0 ? `If they stayed put, ${fix(nn, 1)}% would be enough${m === 0 ? `, but in the Lab they follow Blinkit, so plan for ${fix(ns, 1)}%` : ''}.` : ''}`;
+          $('#o-out').innerHTML = `<div class="answer-card">${chip('SYNTHETIC')}<p class="answer">${answer}</p>
+              <div class="waffles">${waffle(nb, 'base', 'today')}${waffle(st.target, 'c' + m, 'your goal')}</div></div>
+            <details class="more" open><summary>The details: the curve and the numbers</summary>` +
+            (ns == null ? `<p class="banner warn">${ico('alert')}<span>No cut of up to 10% reaches ${st.target}% with rivals reacting. No answer is reported, because larger cuts were not simulated for this page.</span></p>` : '') +
             `<div class="side">${receipt('Your target', [[`${esc(P[m])} is cheapest now on`, pct(S[0])], ['Target', st.target + '%'], ['If rivals did not react', say(nn)],
                 ['How much deeper the response makes it', ns && nn ? fix(ns / nn, 2) + '×' : '—']], ['Smallest cut, rivals reacting', say(ns)])}
             <div class="panel"><h3>Share of products where ${esc(P[m])} is cheapest, by size of cut</h3><p class="note">${m === 0 ? 'Followers track Blinkit, so the two curves part.' : 'Nobody follows this platform in the fitted dynamics, so the curves coincide.'}</p>
               ${lineChart([{cls: 'l1', pts: N.map((y, i) => [i, y]), label: 'rivals frozen', dy: -6}, {cls: 'l0', pts: S.map((y, i) => [i, y]), label: 'rivals react', dy: 14}],
-                {xmax: 10, xticks: [0, 2, 4, 6, 8, 10], xfmt: t => t + '%', ymin: 0, ymax: Math.max(0.8, T + 0.05), yfmt: t => pct(t, 0), target: T, marks, label: 'Cheapest share by cut'})}</div></div>`;
+                {xmax: 10, xticks: [0, 2, 4, 6, 8, 10], xfmt: t => t + '%', ymin: 0, ymax: Math.max(0.8, T + 0.05), yfmt: t => pct(t, 0), target: T, marks, label: 'Cheapest share by cut'})}</div></div></details>`;
           mem.set('opt', st);
         };
-        onSeg('o-mover', val => { st.mover = clamp(+val | 0, 0, 3); render(); });
+        $('#o-mover').addEventListener('change', e => { st.mover = clamp(+e.target.value | 0, 0, 3); render(); });
         $('#o-group').addEventListener('change', e => { if (W.groups.includes(e.target.value)) st.group = e.target.value; render(); });
-        $('#o-target').addEventListener('input', e => { st.target = clamp(+e.target.value || 40, 10, 75); render(); });
+        $('#o-target').addEventListener('change', e => { st.target = clamp(Math.round((+e.target.value || 40) / 5) * 5, 10, 75); render(); });
         render();
       },
       listing() {
         const C = X.chains;
         st.li = clamp(st.li, 0, C.length - 1);
-        body.innerHTML = `<div class="controls"><div class="ctl"><label for="ol-pick">Product</label>${select('ol-pick', C.map(c => `${c.name} · ${c.store}`), `${C[st.li].name} · ${C[st.li].store}`, 'Product')}</div>
+        body.innerHTML = `${plainLine('Pick a product and how often it should be the cheapest app. The answer is the price to post: the smallest cut that gets there, or the highest price that still does.')}<div class="controls"><div class="ctl"><label for="ol-pick">Product</label>${select('ol-pick', C.map(c => `${c.name} · ${c.store}`), `${C[st.li].name} · ${C[st.li].store}`, 'Product')}</div>
           <div class="ctl"><label for="ol-target">Target: cheapest in <b id="ol-target-v"></b> of the next 12 checks</label><input type="range" id="ol-target" min="10" max="90" step="5" value="${st.ltarget}"></div></div><div id="ol-out"></div>`;
         const render = () => {
           const c = C[st.li], T = st.ltarget / 100, L = c.ladder.slice().sort((a, b) => b.p - a.p), h = L.findIndex(r => r.k === 'hold'), now = L[h].p;
@@ -971,7 +1088,7 @@
         const R = W.restock, caps = [...new Set(R.rows.map(r => r.capacity_pct))].sort((a, b) => a - b);
         if (!caps.includes(st.cap)) st.cap = 1;
         const NAMES = {random: 'Random', longest_out_first: 'Longest out first', index_restock_only: 'Priority index, restock only', priority_index: 'Priority index', clairvoyant_oracle: 'Clairvoyant benchmark'};
-        body.innerHTML = `<div class="controls"><div class="ctl"><span>Listings a store can act on per check</span>${segs('r-cap', caps.map(c => [c, c + '%']), st.cap)}</div></div><div id="r-out"></div>`;
+        body.innerHTML = `${plainLine('A store can only restock a few products at a time. This compares ways of choosing which ones first: the priority index removes the most out-of-stock time, and "whatever has been out longest" is no better than picking at random.')}<div class="controls"><div class="ctl"><span>Listings a store can act on per check</span>${segs('r-cap', caps.map(c => [c, c + '%']), st.cap)}</div></div><div id="r-out"></div>`;
         const render = () => {
           $$('#r-cap button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === st.cap)));
           const rows = R.rows.filter(r => r.capacity_pct === st.cap).sort((a, b) => a.reduction_pct - b.reduction_pct), max = Math.max(...R.rows.map(r => r.reduction_p95)) * 1.05;
@@ -1035,7 +1152,11 @@
         <span class="fine" id="pf-n"></span></div>
       <div class="sec-head first"><h2>Followed listings ${chip('SYNTHETIC')}</h2><span class="fine">Tap a card for its full story</span></div>
       <div class="shelf" id="x-shelf"></div>
-      <div class="sec-head"><h2>Your products ${chip('USER')}</h2><button class="btn ghost" type="button" id="ap-open">${ico('plus')}Add a product</button></div>
+      <div class="sec-head"><h2>Your products ${chip('USER')}</h2><span class="sec-acts">
+        <button class="btn ghost" type="button" id="up-export" title="Save your products, photos included, to a file">${ico('download')}Export</button>
+        <button class="btn ghost" type="button" id="up-import" title="Add products from a file you exported">${ico('upload')}Import</button>
+        <button class="btn ghost" type="button" id="ap-open">${ico('plus')}Add a product</button>
+        <input type="file" id="up-file" accept="application/json,.json" hidden></span></div>
       <p class="sub" id="up-where">Your own entries: kept apart from the project data, and no model reads them.</p>
       <div id="up-list"></div>
       <div id="x-out"></div>
@@ -1067,6 +1188,7 @@
         ${c.real ? `<p class="note">${chip('REAL')}${X.storeUnverified ? ' ' + chip('UNVERIFIED') : ''} On 10 Jul 2026: ${rs(c.real.price)}, ${esc(String(c.real.stock).toLowerCase())}, ${c.real.eta[0]} min. Context only: no model uses it. Its price and stock are checked against the source; that it belongs to this store is not.</p>` : ''}`;
       $('#x-out').innerHTML = `<h2>${esc(c.name)} <span style="font-weight:500;color:var(--ink-2)">${esc(c.pack)}</span></h2>
         <p class="sub">${esc(c.storeName)} · ${esc(c.store)} · ${esc(c.category)} &nbsp; <button class="btn ghost" type="button" id="x-ask">${ico('chat')}Ask the analyst to explain it</button></p>
+        <p class="buy-on"><span class="fine">Buy it today on</span> ${P.map(p => shopLink(p, {name: c.name, pack: c.pack}, esc(p))).join('')}</p>
         <div class="grid2">
           ${board(c, `1 · seen at ${esc(d.at)}`, seen)}
           <div class="panel"><h3>2 · Which models apply</h3><p class="note">A model with no valid prediction for this listing is skipped, with the reason. Nothing is forced. Hover a tag to see why.</p>
@@ -1145,7 +1267,7 @@
   }
   const userStore = {
     async list() {
-      if (await liveReady) {
+      if (await serverKeeps()) {
         const r = await fetch('api/products');
         if (!r.ok) throw new Error('The server did not return your list.');
         return (await r.json()).products || [];
@@ -1154,7 +1276,7 @@
     },
     async add(p) {
       checkProduct(p);
-      if (await liveReady) {
+      if (await serverKeeps()) {
         const r = await fetch('api/products', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(p)});
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j.error ? j.error.charAt(0).toUpperCase() + j.error.slice(1) + '.' : 'The product was not saved.');
@@ -1168,7 +1290,7 @@
     },
     async update(id, p) {
       checkProduct(p);
-      if (await liveReady) {
+      if (await serverKeeps()) {
         const r = await fetch('api/products/' + encodeURIComponent(id), {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(p)});
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j.error ? j.error.charAt(0).toUpperCase() + j.error.slice(1) + '.' : 'The changes were not saved.');
@@ -1184,7 +1306,7 @@
       return upd;
     },
     async remove(id) {
-      if (await liveReady) {
+      if (await serverKeeps()) {
         const r = await fetch('api/products/' + encodeURIComponent(id), {method: 'DELETE'});
         if (!r.ok) throw new Error('The product was not removed.');
         return true;
@@ -1219,7 +1341,7 @@
       if (pfState.sort === 'eta') list = list.slice().sort((a, b) => (a.eta || 999) - (b.eta || 999));
       if (all.length && !list.length) { box.innerHTML = '<p class="note">None of your products matches the search.</p>'; return; }
       const where = $('#up-where');
-      if (where) where.textContent = (await liveReady ? 'Saved on this computer. ' : 'Saved in this browser only. ')
+      if (where) where.textContent = (await serverKeeps() ? 'Saved on this computer. ' : 'Saved in this browser only. ')
         + 'Your own entries: kept apart from the project data, and no model reads them.';
       box.innerHTML = list.length ? `<div class="shelf">${list.map(x => userCard(x)).join('')}</div>`
         : `<div class="add-promo"><span class="ap-ico">${ico('camera')}</span>
@@ -1339,10 +1461,67 @@
   function seasonHint() {
     const el = $('#ap-season'); if (!el) return;
     const fm = festMatch(`${$('#ap-name').value || ''} ${$('#ap-cat').value || ''}`);
-    const fs = fm.groups.length ? upcoming().filter(f => f.groups.some(k => fm.groups.includes(k))) : [];
+    const fs = fm.groups.length ? firstOfEach(upcoming(366)).filter(f => f.groups.some(k => fm.groups.includes(k))) : [];
     el.innerHTML = fs.length ? `${ico('lamp')}<span>In season for ${fs.slice(0, 3).map(f => `<b>${esc(f.name)}</b> (${esc(fmtD(dOf(f.day)))})`).join(', ')}. See the <a href="#festive">Festive planner</a>.</span>` : '';
   }
+  /* ---- your products travel as a file: export them (photos included), import them in another browser or device */
+  const UP_FIELDS = ['name', 'brand', 'pack', 'category', 'in_stock', 'eta'];
+  async function asDataUrl(src) {                 // a photo the server keeps, as a data URL that can travel in the file
+    if (!src || /^data:/.test(src)) return src || null;
+    try {
+      const b = await (await fetch(API + src)).blob();
+      return await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
+    } catch (e) { return null; }
+  }
+  async function exportProducts() {
+    try {
+      const list = await userStore.list();
+      if (!list.length) { toast('You have no products to export yet', 'alert'); return; }
+      const products = [];
+      for (const p of list) {
+        const out = {prices: Object.assign({}, p.prices || {})};
+        UP_FIELDS.forEach(k => { if (p[k] != null) out[k] = p[k]; });
+        out.image = await asDataUrl(imgSrc(p.image));
+        products.push(out);
+      }
+      if (typeof Blob !== 'function' || typeof URL === 'undefined' || !URL.createObjectURL || typeof document.createElement !== 'function') return;
+      const doc = {app: 'Qcom', kind: 'your-products', version: 1, exported: new Date().toISOString(), products};
+      const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], {type: 'application/json'}));
+      const a = document.createElement('a');
+      a.href = url; a.download = `qcom-products-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast(`Exported ${products.length} product${products.length === 1 ? '' : 's'}`, 'download');
+    } catch (e) { toast('The export did not work: ' + ((e && e.message) || e), 'alert'); }
+  }
+  async function importProducts(input) {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    try {
+      if (file.size > 25 * 1024 * 1024) throw new Error('That file is larger than 25 MB.');
+      const doc = JSON.parse(await file.text());
+      const list = doc && doc.kind === 'your-products' && Array.isArray(doc.products) ? doc.products : null;
+      if (!list) throw new Error('That is not a file of Qcom products.');
+      const key = p => (String(p.name || '').trim() + '|' + String(p.pack || '').trim()).toLowerCase();
+      const have = new Set(userCache.map(key));
+      let added = 0, skipped = 0;
+      for (const raw of list.slice(0, 200)) {
+        const p = {prices: {}};
+        UP_FIELDS.forEach(k => { if (raw && raw[k] != null) p[k] = raw[k]; });
+        P.forEach(pl => { const v = +((raw && raw.prices) || {})[pl]; if (v > 0) p.prices[pl] = v; });
+        if (raw && typeof raw.image === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(raw.image)) p.image = raw.image;
+        if (have.has(key(p))) { skipped++; continue; }                 // already on the list: importing twice adds nothing
+        try { await userStore.add(p); have.add(key(p)); added++; } catch (e) { skipped++; }
+      }
+      toast(`Imported ${added} product${added === 1 ? '' : 's'}${skipped ? `; ${skipped} skipped (already here, or not valid)` : ''}`, 'upload');
+      await drawUserProducts();
+    } catch (e) { toast(String((e && e.message) || e), 'alert'); } finally { try { input.value = ''; } catch (e) { /* a read-only stand-in */ } }
+  }
+
   function wireAddSheet() {
+    $('#up-export').addEventListener('click', exportProducts);
+    $('#up-import').addEventListener('click', () => { const f = $('#up-file'); if (f && f.click) f.click(); });
+    $('#up-file').addEventListener('change', e => importProducts(e.target));
     $('#ap-open').addEventListener('click', () => openAddSheet());
     $('#ap-close').addEventListener('click', closeAddSheet);
     $('#ap').addEventListener('click', e => { if (e.target && e.target.id === 'ap') closeAddSheet(); });
@@ -1388,7 +1567,7 @@
 
   /* ---------------------------------------------------------------- festive planner */
   PAGES.festive = v => {
-    const F = D('festive'), G = F.groups, up = upcoming();
+    const F = D('festive'), G = F.groups, up = upcoming(366);                 // the next twelve months
     const st = Object.assign({fest: up.length ? up[0].key : null, lead: 10, q: ''}, mem.get('festive', {}));
     st.lead = clamp(Math.round(+st.lead) || 10, 1, 30);
     st.q = String(st.q || '').slice(0, 120);
@@ -1396,23 +1575,23 @@
     const save = () => mem.set('festive', st);
     const snapDay = fmtD(dOf(F.snapshot_date), {year: 'numeric'});
     v.innerHTML = `<p class="eyebrow">${ico('lamp')}Festive planner</p><h1 class="page">Know the season. <mark>Stock up</mark> before it.</h1>
-      <p class="lede">Festivals decide what goes in the basket: diyas and candles before Diwali, rakhis before Raksha Bandhan, til and jaggery before Sankranti. Here is every festival of the next twelve months, what is traditionally bought for it, and what Blinkit had on the shelf on the one day it was observed. It tells you <b>when</b> to have stock ready. It cannot tell you <b>how much</b> more will sell: there are no orders in the data.</p>
+      <p class="lede">Festivals and special days decide what goes in the basket: diyas before Diwali, rakhis before Raksha Bandhan, til and jaggery before Sankranti, a grooming kit or perfume before Father's Day. Here is every festival and special day of the next twelve months (the calendar keeps itself up to date for years ahead), what is traditionally bought for it, and what Blinkit had on the shelf on the one day it was observed. It tells you <b>when</b> to have stock ready. It cannot tell you <b>how much</b> more will sell: there are no orders in the data.</p>
       ${up.length ? '' : `<p class="banner warn">${ico('alert')}<span>The calendar runs to ${esc(F.festivals[F.festivals.length - 1].end)} and every festival in it has passed. Extend it in src/seasonal/festive.py.</span></p>`}
       <div class="side fest-top"><div id="f-next"></div>
         <div class="panel" id="f-look"><h3>${ico('search')}When is a product in season?</h3><p class="note">Type a product or a festival. The answer comes from the festival calendar.</p>
           <form class="ask" id="f-form" autocomplete="off"><input id="f-q" type="text" value="${esc(st.q)}" placeholder="handmade diya, scented candle, kaju katli, rakhi" aria-label="Product or festival"><button class="btn" type="submit">Check</button></form>
-          <div class="sugg">${['Handmade diya', 'Scented candles', 'Kaju katli', 'Rakhi', 'Til chikki', 'Plum cake', 'Holi colours'].map(x => `<button type="button" data-fq="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+          <div class="sugg">${['Handmade diya', 'Rakhi', 'Perfume gift set', 'Razor', 'Chocolates', 'Kaju katli', 'Plum cake', 'Balloons'].map(x => `<button type="button" data-fq="${esc(x)}">${esc(x)}</button>`).join('')}</div>
           <div id="f-out"></div></div></div>
       <div class="controls mt"><div class="ctl"><label for="f-lead">Have stock on the shelf <b id="f-lead-v"></b> before a festival</label><input type="range" id="f-lead" min="1" max="30" step="1" value="${st.lead}"></div>
         <p class="fine" style="margin:0;max-width:56ch">Your assumption, not a model output: how long your store takes to order, receive and shelve stock. Every "stock up by" date on this page moves with it.</p></div>
-      <h2>Coming up ${chip('EXTERNAL')}</h2><p class="sub">Dates from public panchang and holiday calendars, checked ${esc(F.calendar_checked)}. Lunar dates can differ by a day between panchangs; each festival notes where its sources disagree. Tap one to see what to stock.</p>
+      <h2>Coming up</h2><p class="sub">Dates up to Oct 2027 come from public panchang and holiday calendars ${chip('EXTERNAL')}, checked ${esc(F.calendar_checked)}. Every other date is computed for Bhubaneswar from the positions of the sun and moon ${chip('METHOD')}, the way a panchang does; that method gives back all ${F.almanac_check ? F.almanac_check.same_day : 19} cited dates exactly. Lunar dates can differ by a day between panchangs. Tap one to see what to stock.</p>
       <div class="fest-list" id="f-list"></div>
       <div id="f-detail"></div>
       <div id="f-yours"></div>
       <h2>In season, month by month</h2><p class="sub">Which product types each month's festivals call for, read off the calendar. A filled cell is a festival, not a measured sales peak.</p>
       <div class="panel"><div class="tbl" id="f-season"></div></div>
       <div class="panel mt"><div class="lists">
-        <div><h4>What this page knows</h4><ul><li>When each festival falls, from cited public calendars ${chip('EXTERNAL')}</li><li>Which product types are traditionally bought for it: a rule of the planner ${chip('METHOD')}</li><li>Which matching products Blinkit listed, at what price, in or out of stock, on ${esc(snapDay)} ${chip('REAL')}</li></ul></div>
+        <div><h4>What this page knows</h4><ul><li>When each festival and special day falls: cited calendars to Oct 2027 ${chip('EXTERNAL')}, computed for every year after ${chip('METHOD')}</li><li>Which product types are traditionally bought for it: a rule of the planner ${chip('METHOD')}</li><li>Which matching products Blinkit listed, at what price, in or out of stock, on ${esc(snapDay)} ${chip('REAL')}</li></ul></div>
         <div><h4>What it does not know</h4><ul><li>How much more anything sells at a festival, or for how long: there are no orders in the data</li><li>How festive stock behaves: the one observed day, in July, was not a festival</li><li>How much to stock: that is yours to set, from your own sales</li></ul></div>
         <div><h4>What would change that</h4><ul><li>Logging these products daily through Diwali, sized on <a href="#plan">Plan the panel</a></li><li>A store's own sales history, which this project does not have</li></ul></div>
       </div></div>`;
@@ -1444,7 +1623,8 @@
     };
     const drawDetail = () => {
       const f = up.find(x => x.key === st.fest) || up[0], s = festState(f, st.lead);
-      const src = f.sources.length ? f.sources.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">source ${i + 1}</a>`).join(' · ') : 'fixed date';
+      const src = f.provenance === 'METHOD' ? `${chip('METHOD')} computed${f.approximate ? ', approximate' : ''}`
+        : f.sources.length ? f.sources.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">source ${i + 1}</a>`).join(' · ') : 'fixed date';
       $('#f-detail').innerHTML = `<h2>What to stock for ${esc(f.name)} <span class="pill ${s.cls}">${esc(s.tag)}</span></h2>
         <p class="sub">${esc(fmtD(dOf(f.day), {weekday: 'long'}))}${s.s > 0 ? `, ${s.s} day${s.s === 1 ? '' : 's'} away` : ''}. ${esc(f.note)} <span class="fine">${src}</span></p>
         <div class="grid3">${f.groups.map(k => groupCard(k, f)).join('')}</div>`;
@@ -1651,7 +1831,27 @@
         <span class="bk-nm"><b>${esc(l.name)}</b><span>${chip(l.prov)} ${esc(l.pack || '')}</span></span>
         <span class="qty"><button type="button" data-bq="${esc(l.k)}" data-d="-1" aria-label="One fewer ${esc(l.name)}">${ico('minus')}</button><span>${l.q}</span><button type="button" data-bq="${esc(l.k)}" data-d="1" aria-label="One more ${esc(l.name)}">${ico('plus')}</button></span></div>`).join('')}</div>
       <p class="fine bk-note">${provs.has('SYNTHETIC') ? `${chip('SYNTHETIC')} Followed listings are priced at one check in the Lab${at ? ` (${esc(at)})` : ''}, not at today's shop price. ` : ''}${provs.has('USER') ? `${chip('USER')} Your products use the prices you entered. ` : ''}${provs.size > 1 ? 'This basket mixes the two. ' : ''}Delivery fees and coupons are not included.</p>
+      ${shopPanel(lines, best.length && best.length < ranked.length ? best[0].pl : (ranked[0] || T[0]).pl)}
       <div class="bk-acts"><button type="button" class="btn ghost" data-bk-clear>Empty the basket</button><a class="btn pop" href="#listings" data-bk-close>${ico('plus')}Add more</a></div>`;
+  }
+  /* ---- from the basket to the app: each line opens the app's own search for that product, where it goes in the cart.
+     No outside site can fill a Blinkit, Instamart, Flipkart or BigBasket cart: they offer no way to, by design. */
+  const SHOP = {
+    'Blinkit': q => 'https://blinkit.com/s/?q=' + encodeURIComponent(q),
+    'Swiggy Instamart': q => 'https://www.swiggy.com/instamart/search?custom_back=true&query=' + encodeURIComponent(q),
+    'Flipkart Minutes': q => 'https://www.flipkart.com/search?q=' + encodeURIComponent(q) + '&marketplace=HYPERLOCAL',
+    'BigBasket': q => 'https://www.bigbasket.com/ps/?q=' + encodeURIComponent(q),
+  };
+  const shopQuery = l => String(l.name || '').replace(/\*+/g, '').replace(/\s+/g, ' ').trim() + (l.pack ? ' ' + String(l.pack).replace(/\*+/g, '').trim() : '');
+  const shopLink = (app, l, label) => `<a class="shop-link" href="${esc(SHOP[app](shopQuery(l)))}" target="_blank" rel="noopener noreferrer"
+    title="Opens ${esc(app)}'s search for this product in a new tab">${label || 'Find on ' + esc(app)} <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>`;
+  let shopApp = null;
+  function shopPanel(lines, cheapest) {
+    const app = P.includes(shopApp) ? shopApp : cheapest;
+    return `<div class="shop" id="bk-shop"><div class="shop-head"><b>${ico('cart')}Shop it on ${esc(app)}</b>${app === cheapest ? '<span class="pill deal">cheapest here</span>' : ''}</div>
+      <div class="segs shop-apps" role="group" aria-label="Which app">${P.map((p, i) => `<button type="button" data-shop-app="${esc(p)}" aria-pressed="${p === app}"><i class="pdot c${i}"></i>${esc(p.split(' ')[0])}</button>`).join('')}</div>
+      <ol class="shop-list">${lines.map(l => `<li><span>${l.q} × ${esc(l.name)}</span>${shopLink(app, l, 'Add on ' + esc(app.split(' ')[0]))}</li>`).join('')}</ol>
+      <p class="fine" style="margin:0">Each link opens ${esc(app)}'s own search for that product in a new tab, where you add it to your cart. The app may first ask where to deliver or ask you to sign in, as it would on its own site. Qcom cannot fill another app's cart, and the price there is today's, which can differ from the one above.</p></div>`;
   }
   function basketSync() {
     const items = basket.items(), cnt = $('#bk-count'), keys = new Set(items.map(x => x.k));
@@ -1692,6 +1892,8 @@
     }
     const q = t.closest('[data-bq]');
     if (q) { const it = basket.items().find(x => x.k === q.dataset.bq); if (it) basket.set(it.k, it.q + (+q.dataset.d || 0)); return; }
+    const sa = t.closest('[data-shop-app]');
+    if (sa) { if (P.includes(sa.dataset.shopApp)) { shopApp = sa.dataset.shopApp; drawBasket(); } return; }
     if (t.closest('[data-bk-clear]')) { basket.clear(); toast('The basket is empty', 'cart'); return; }
     if (t.closest('[data-bk-close]')) closeBasket();
   });

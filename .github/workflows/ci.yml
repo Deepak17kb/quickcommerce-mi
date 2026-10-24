@@ -1,7 +1,8 @@
 # CI — on every push: the frozen raw data still matches its hashes, the ML layer rebuilds from it with the leakage
 # verification, the data contracts hold, and the guardrail tests pass. These are the checks a fresh clone can run:
 # model outputs (outputs/) are not in git, so the tests that read them run locally with the full pipeline
-# (python scripts/run_all.py). Versions are pinned to the ones the project was last run with.
+# (python scripts/run_all.py); the full-suite job runs every test on the outputs of the last released run
+# (scripts/fetch_outputs.py). Versions are pinned to the ones the project was last run with.
 name: CI
 
 on:
@@ -70,3 +71,24 @@ jobs:
           python-version: '3.13'
       - name: Python sources compile
         run: python -m compileall -q src scripts tests
+
+  full-suite:
+    name: Every test, on the released run outputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install (exact versions)
+        run: pip install -r requirements-ci.txt
+      - name: Released run outputs, sha256-checked (data/ml and outputs/, as data/OUTPUTS_RELEASE.json names them)
+        run: python scripts/fetch_outputs.py
+      - name: Frozen raw data matches its sha256 baseline
+        run: python scripts/verify_raw_integrity.py
+      - name: The whole test suite
+        run: python -m pytest -q

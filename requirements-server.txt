@@ -1,0 +1,6 @@
+# What the public analyst server needs and nothing more (scripts/serve_site.py --public, render.yaml).
+# Measured 2026-10-20: these four are the only third-party packages its answers import; about 200 MB resident.
+pandas==3.0.0
+numpy==2.4.2
+pyarrow==23.0.1
+scipy==1.17.0

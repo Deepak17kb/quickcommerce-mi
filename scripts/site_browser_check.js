@@ -63,6 +63,9 @@ async function main() {
     const report = [], sideways = [];
     async function shot(name, opt) {
       opt = opt || {};
+      // product photos load lazily from another host, which can take 5 s or more: wait up to 12 s so a capture shows them
+      await run(`const ps = [...document.querySelectorAll('img.prod-photo')]; ps.forEach(i => { i.loading = 'eager'; });
+        for (let t = 0; t < 120 && ps.some(i => i.isConnected && !i.classList.contains('on')); t++) await new Promise(r => setTimeout(r, 100));`);
       const {cssContentSize: size} = await send('Page.getLayoutMetrics');
       const m = await run(`const d = document.documentElement; return {sw: d.scrollWidth, cw: d.clientWidth, words: (document.body.innerText.match(/\\b(real|synthetic)\\b|snapshot/gi) || []).filter(w => w !== 'Real').length, drawn: !/could not be drawn/.test(document.getElementById('view').innerText)};`);
       if (m.sw > m.cw + 1) sideways.push(`${name}: content is ${m.sw}px wide in a ${m.cw}px window`);
@@ -104,6 +107,9 @@ async function main() {
     await click('#x-shelf [data-pick="6"]'); await shot('03-products-another-light', {maxHeight: 2600});
     // add a product the way a person would: open the sheet, upload a photo, fill the details, save; then remove it
     await go('listings');
+    // a check stopped part-way leaves its test product behind; clear it, or this run finds two
+    await run(`for (const card of [...document.querySelectorAll('#up-list .ucard')].filter(x => /browser check/.test(x.textContent))) {
+        const b = card.querySelector('[data-remove]'); b.click(); b.click(); await new Promise(r => setTimeout(r, 500)); }`);
     await click('#ap-open'); await shot('45-add-sheet-light', {viewport: true});
     await run(`
       const c = document.createElement('canvas'); c.width = 640; c.height = 480; const g = c.getContext('2d');
@@ -154,6 +160,7 @@ async function main() {
       document.querySelector('[data-bq][data-d="1"]').click(); await new Promise(r => setTimeout(r, 150));
       if (document.getElementById('bk-count').textContent !== '4') throw new Error('one more did not count');`);
     await shot('51-basket-light', {viewport: true});
+    await run(`const b = document.querySelector('#basket .bk-body'); if (!b || b.scrollWidth > b.clientWidth + 1) throw new Error('the basket runs past its edge: ' + (b && b.scrollWidth) + ' > ' + (b && b.clientWidth));`);   // a drawer scrolls inside itself: the page-wide check cannot see it
     await click('#bk-close');
     // go anywhere: Ctrl K, type, Enter
     await run(`document.dispatchEvent(new KeyboardEvent('keydown', {key: 'k', ctrlKey: true, bubbles: true})); await new Promise(r => setTimeout(r, 200));
@@ -171,6 +178,25 @@ async function main() {
     await sleep(900);
     await shot('53-hover-light', {viewport: true});
     await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: 2, y: 2});
+    // your products travel as a file: export (photo included), remove, import, and the product is back
+    await go('listings');
+    await run(`const pause = ms => new Promise(r => setTimeout(r, ms));
+      const blobs = [], keep = [URL.createObjectURL, HTMLAnchorElement.prototype.click];
+      URL.createObjectURL = b => { blobs.push(b); return 'blob:qcom-check'; }; HTMLAnchorElement.prototype.click = function () {};
+      try { document.getElementById('up-export').click(); for (let i = 0; i < 40 && !blobs.length; i++) await pause(100); }
+      finally { URL.createObjectURL = keep[0]; HTMLAnchorElement.prototype.click = keep[1]; }
+      if (!blobs.length) throw new Error('Export produced no file');
+      const doc = JSON.parse(await blobs[0].text()), mine = doc.products.find(p => /browser check/.test(p.name));
+      if (doc.kind !== 'your-products' || !mine || !/^data:image\\/(png|jpeg|webp);base64,/.test(mine.image || '')) throw new Error('the exported file lacks the product or its photo');
+      window.__qcomExport = JSON.stringify(doc);
+      const card = [...document.querySelectorAll('#up-list .ucard')].find(x => /browser check/.test(x.textContent));
+      const b = card.querySelector('[data-remove]'); b.click(); b.click(); await pause(500);
+      if ([...document.querySelectorAll('#up-list .ucard')].some(x => /browser check/.test(x.textContent))) throw new Error('the product was not removed before the import');
+      const dt = new DataTransfer(); dt.items.add(new File([window.__qcomExport], 'qcom-products.json', {type: 'application/json'}));
+      const inp = document.getElementById('up-file'); inp.files = dt.files; inp.dispatchEvent(new Event('change', {bubbles: true}));
+      for (let i = 0; i < 50 && ![...document.querySelectorAll('#up-list .ucard')].some(x => /browser check/.test(x.textContent)); i++) await pause(100);
+      const back = [...document.querySelectorAll('#up-list .ucard')].find(x => /browser check/.test(x.textContent));
+      if (!back || !back.querySelector('img')) throw new Error('Import did not bring the product back with its photo');`);
     await go('listings');
     await run(`for (const card of [...document.querySelectorAll('#up-list .ucard')].filter(x => /browser check/.test(x.textContent))) {
         const b = card.querySelector('[data-remove]'); b.click(); b.click(); await new Promise(r => setTimeout(r, 500)); }
@@ -178,7 +204,10 @@ async function main() {
     await go('festive'); await shot('40-festive-light');
     await click('#f-look [data-fq="Handmade diya"]'); await shot('41-festive-lookup-light', {viewport: true});
     await go('simulate'); await click('#sim-tabs [data-v="move"]'); await shot('04-simulate-move-light');
-    await run(`const s = document.getElementById('s-move'); s.value = '5'; s.dispatchEvent(new Event('input', {bubbles: true})); document.getElementById('s-react').click(); await new Promise(r => setTimeout(r, 200));`);
+    await run(`const pick = (id, v) => { const s = document.getElementById(id); s.value = v; s.dispatchEvent(new Event('change', {bubbles: true})); };
+      pick('s-dir', 'raise'); pick('s-size', '5'); pick('s-react', 'no'); await new Promise(r => setTimeout(r, 200));
+      const a = document.querySelector('#s-out .answer');
+      if (!a || !/raises its prices by 5%.*of every 100/s.test(a.textContent)) throw new Error('the sentence did not answer: ' + (a && a.textContent));`);
     await shot('05-simulate-raise-frozen-light', {maxHeight: 1400});
     for (const [t, n] of [['promo', '06'], ['outage', '07'], ['listing', '08']]) { await click(`#sim-tabs [data-v="${t}"]`); await shot(`${n}-simulate-${t}-light`); }
     await go('optimize');
@@ -217,13 +246,13 @@ async function main() {
     await setup(1360, 900, 'dark');
     for (const [p, n] of [['home', '19'], ['festive', '44'], ['simulate', '20'], ['optimize', '21'], ['analyst', '22'], ['data', '23']]) { await go(p); await shot(`${n}-${p}-dark`, {maxHeight: 3000}); }
     await go('pipeline'); await shot('54-pipeline-dark', {maxHeight: 3000});
-    await click('#bk-btn'); await shot('55-basket-dark', {viewport: true}); await click('#bk-close');
+    await click('#bk-btn'); await shot('55-basket-dark', {viewport: true}); await run(`const b = document.querySelector('#basket .bk-body'); if (!b || b.scrollWidth > b.clientWidth + 1) throw new Error('the basket runs past its edge: ' + (b && b.scrollWidth) + ' > ' + (b && b.clientWidth));`); await click('#bk-close');
 
     // ---- phone
     await setup(390, 844, 'light', true);
     for (const [p, n] of [['home', '24'], ['festive', '43'], ['listings', '25'], ['simulate', '26'], ['optimize', '27'], ['analyst', '28'], ['models', '29'], ['data', '30'], ['plan', '31'], ['pipeline', '32']]) { await go(p); await shot(`${n}-${p}-phone`, {maxHeight: 4200}); }
     await go('home'); await click('#fab'); await shot('33-floating-analyst-phone', {viewport: true});
-    await click('#dock-close'); await click('#bk-btn'); await shot('56-basket-phone', {viewport: true}); await click('#bk-close');
+    await click('#dock-close'); await click('#bk-btn'); await shot('56-basket-phone', {viewport: true}); await run(`const b = document.querySelector('#basket .bk-body'); if (!b || b.scrollWidth > b.clientWidth + 1) throw new Error('the basket runs past its edge: ' + (b && b.scrollWidth) + ' > ' + (b && b.clientWidth));`); await click('#bk-close');
     await click('#pal-btn'); await shot('57-palette-phone', {viewport: true});
     await run(`document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await new Promise(r => setTimeout(r, 150));
       if (!document.getElementById('pal').hidden) throw new Error('Escape did not close the palette');`);

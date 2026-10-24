@@ -7,9 +7,11 @@ those products Blinkit listed on the day it was observed.
 
 Three parts, three provenances, kept apart in the output:
 
-    calendar    EXTERNAL. Festival dates for Oct 2026 - Oct 2027 from public panchang and holiday calendars, checked
-                2026-10-14, each with its source URLs. Lunar dates can differ by a day between panchangs; every such
-                case carries a note. Eid depends on the moon sighting.
+    calendar    EXTERNAL where cited: festival dates for Oct 2026 - Oct 2027 from public panchang and holiday calendars,
+                checked 2026-10-14, each with its source URLs. METHOD everywhere else: computed by src/seasonal/almanac.py
+                (the lunisolar calendar for Bhubaneswar, sankrantis, nth-Sunday days, the tabular Islamic calendar) for
+                this year and the next HORIZON_YEARS, so the planner never runs out. The computed dates reproduce all 19
+                cited ones, day and span (tests/test_festive.py). Eid depends on the moon sighting and stays approximate.
     groups      METHOD. Which product types are traditionally bought for which festival (diyas and candles for
                 Diwali, rakhis for Raksha Bandhan ...), as keyword rules over product names. A rule of the planner,
                 not a measurement.
@@ -150,6 +152,68 @@ GROUPS = {
         'words': ['sabudana', 'sago', 'kuttu', 'singhara', 'rajgira', 'makhana', 'samak', 'vrat', 'fasting', 'foxnut',
                   'sendha'],
     },
+    # ---- added 2026-10-23 for special days (Valentine's, Mother's and Father's Day ...). Each rule was read against the
+    # observed names before it went in; the lookalikes it caught are in its exclude (milkshakes, fabric conditioner).
+    'chocolates': {
+        'label': 'Chocolates & chocolate gifts', 'icon': 'gift',
+        'include': r'\bchocolates?\b|\bdairy milk\b|\bkit ?kat\b|\bferrero\b|\bsilk\b|\bbournville\b|\bpralines?\b|\btruffles?\b|'
+                   r'\bfive star\b|\btoblerone\b|\blindt\b|\bcelebrations\b',
+        'exclude': r'compound|sprinkles|chips|drink|beverage|\bmix\b|syrup|spread|wafers?\b|cookie|biscuit|granola|aphrodisiac|'
+                   r'protein|supplement|milkshake|cake|muffin|donut|brownie|waffle|coffee|powder|toffee',
+        'cats': ['Chocolates', 'Sweets & Chocolates'],
+        'words': ['chocolate', 'chocolates', 'dairy milk', 'kitkat', 'ferrero', 'truffle', 'truffles', 'pralines', 'toblerone'],
+    },
+    'perfumes': {
+        'label': 'Perfumes & gift sets', 'icon': 'spray',
+        'include': r'\bperfumes?\b|\bbody mists?\b|eau de|\bedp\b|\bedt\b|\bbody spray\b',
+        'exclude': r'soap|body ?wash|dog|\bpet\b|\bcar\b|room|candle|cockroach|urinal|bathing|aphrodisiac|fabric|conditioner',
+        'cats': ['Personal Care'],
+        'words': ['perfume', 'perfumes', 'body mist', 'fragrance', 'scent', 'deo', 'deodorant', 'body spray'],
+    },
+    'grooming': {
+        'label': "Men's grooming", 'icon': 'user',
+        'include': r'\bshav(e|ing)\b|\brazors?\b|after ?shave|\bbeard\b|\btrimmers?\b|\bmen\b.*\b(face wash|perfume|deo|cream)\b|'
+                   r'\bfor men\b|\bgillette\b|\bbombay shaving\b|\bbeardo\b|\bnivea men\b',
+        'exclude': r'women|ladies|\bher\b|baby|kids|\bpet\b',
+        'cats': ['Personal Care'],
+        'words': ['razor', 'shaving', 'shave', 'beard', 'trimmer', 'grooming', 'aftershave', 'face wash for men'],
+    },
+    'party': {
+        'label': 'Soft drinks & party snacks', 'icon': 'cup',
+        'include': r'\bsoft drinks?\b|\bcoca[- ]cola\b|\bpepsi\b|\bsprite\b|\bfanta\b|\bthums up\b|\bmirinda\b|\b7 ?up\b|'
+                   r'\bmountain dew\b|\bpopcorn\b|\bnachos\b|\bpotato chips\b',
+        'exclude': r'baking|choco ?chips|protein|energy|chicken|combo|electrolyte|kernels|chocolate|wafers?',
+        'cats': None,
+        'words': ['soft drink', 'cola', 'pepsi', 'coke', 'sprite', 'popcorn', 'nachos', 'chips', 'party snacks'],
+    },
+    'balloons': {
+        'label': 'Balloons & party props', 'icon': 'spark',
+        'include': r'\bballoons?\b|party poppers?|birthday (banner|decoration|caps)|decoration kit|foil curtain|\bconfetti\b',
+        'exclude': r'pump|bubble gum|dart|magnet',
+        'cats': None,
+        'words': ['balloon', 'balloons', 'party props', 'decoration kit', 'birthday banner', 'confetti', 'party poppers'],
+    },
+    # products made for one occasion, found by the occasion's own name in the product name
+    'made_for_teachers_day': {
+        'label': "Made for Teachers' Day", 'icon': 'flower', 'include': r"teacher'?s'? day|best teacher", 'exclude': None,
+        'cats': None, 'words': ["teachers day", "teacher's day", 'for teacher'],
+    },
+    'made_for_valentines': {
+        'label': "Made for Valentine's Day", 'icon': 'gift', 'include': r'valentine|\bi love you\b|\blove you\b',
+        'exclude': r'plant|\bpot\b', 'cats': None, 'words': ['valentine', 'valentines', 'i love you'],
+    },
+    'made_for_christmas': {
+        'label': 'Made for Christmas', 'icon': 'spark', 'include': r'christmas|\bxmas\b|\bsanta\b', 'exclude': None,
+        'cats': None, 'words': ['christmas tree', 'wreath', 'santa'],
+    },
+    'made_for_womens_day': {
+        'label': "Made for Women's Day", 'icon': 'flower', 'include': r"women'?s day", 'exclude': None,
+        'cats': None, 'words': ["womens day", "women's day"],
+    },
+    'made_for_eid': {
+        'label': 'Made for Eid and Ramzan', 'icon': 'nut', 'include': r'\beid\b|ramadan|ramzan', 'exclude': None,
+        'cats': None, 'words': ['ramzan', 'ramadan', 'iftar'],
+    },
 }
 
 # --------------------------------------------------------------------------- the calendar (EXTERNAL, checked CHECKED)
@@ -188,16 +252,16 @@ FESTIVALS = [
      'sources': ['https://hindutone.com/festivals/kartika-purnima-2026-tripurari-purnima-dev-deepawali-date-significance-varanasi/',
                  'https://hindutone.com/festivals/boita-bandana-bali-jatra-2026-odisha/']},
     {'key': 'christmas', 'name': 'Christmas', 'start': '2026-12-24', 'end': '2026-12-25', 'day': '2026-12-25',
-     'groups': ['cakes', 'gift_packs', 'decor', 'diyas_candles'], 'note': 'Fixed date.', 'sources': []},
+     'groups': ['cakes', 'made_for_christmas', 'gift_packs', 'chocolates', 'decor', 'diyas_candles'], 'note': 'Fixed date.', 'sources': []},
     {'key': 'new_year', 'name': "New Year's Eve", 'start': '2026-12-31', 'end': '2026-12-31', 'day': '2026-12-31',
-     'groups': ['cakes', 'gift_packs', 'decor'], 'note': 'Fixed date.', 'sources': []},
+     'groups': ['party', 'cakes', 'balloons', 'decor', 'gift_packs'], 'note': 'Fixed date.', 'sources': []},
     {'key': 'sankranti', 'name': 'Makar Sankranti', 'start': '2027-01-15', 'end': '2027-01-15', 'day': '2027-01-15',
      'groups': ['til_jaggery', 'sweets', 'puja'], 'note': 'Pongal the same day.',
      'sources': ['https://hindupad.com/hindu-festivals-2027/', 'https://www.calendarlabs.com/holidays/hindu/2027']},
     {'key': 'valentines', 'name': "Valentine's Day", 'start': '2027-02-14', 'end': '2027-02-14', 'day': '2027-02-14',
-     'groups': ['gift_packs', 'flowers', 'cakes', 'diyas_candles'], 'note': 'Fixed date.', 'sources': []},
+     'groups': ['made_for_valentines', 'chocolates', 'flowers', 'perfumes', 'gift_packs', 'cakes'], 'note': 'Fixed date.', 'sources': []},
     {'key': 'eid_ul_fitr', 'name': 'Eid ul-Fitr', 'start': '2027-03-09', 'end': '2027-03-10', 'day': '2027-03-10',
-     'groups': ['sewai', 'dry_fruits', 'sweets', 'gift_packs'],
+     'groups': ['sewai', 'dry_fruits', 'made_for_eid', 'sweets', 'gift_packs'],
      'note': 'Set by the moon sighting: 9 or 10 March, confirmed the evening before.',
      'sources': ['https://calendarific.com/holidays/2027/IN', 'https://www.officeholidays.com/holidays/india/delhi/eid-al-fitr']},
     {'key': 'holi', 'name': 'Holi', 'start': '2027-03-21', 'end': '2027-03-22', 'day': '2027-03-22',
@@ -208,7 +272,7 @@ FESTIVALS = [
      'note': 'Puri. Panchang sites agree; the temple administration confirms it nearer the day.',
      'sources': ['https://dekhopanchang.com/en/festivals/jagannath-rath-yatra/2027', 'https://shubhpanchang.com/festivals/rath-yatra']},
     {'key': 'raksha_bandhan', 'name': 'Raksha Bandhan', 'start': '2027-08-17', 'end': '2027-08-17', 'day': '2027-08-17',
-     'groups': ['rakhi', 'gift_packs', 'sweets', 'dry_fruits'], 'note': 'One panchang gives 16 August, the full-moon day.',
+     'groups': ['rakhi', 'gift_packs', 'chocolates', 'sweets', 'dry_fruits'], 'note': 'One panchang gives 16 August, the full-moon day.',
      'sources': _2027_SRC},
     {'key': 'janmashtami', 'name': 'Janmashtami', 'start': '2027-08-25', 'end': '2027-08-25', 'day': '2027-08-25',
      'groups': ['puja', 'sweets', 'flowers', 'fasting'], 'note': 'Smarta observance on 24 August in one panchang.',
@@ -240,11 +304,84 @@ ALIASES = {
     'rath_yatra': ['rath yatra', 'ratha yatra', 'rath'], 'raksha_bandhan': ['raksha bandhan', 'rakhi'],
     'janmashtami': ['janmashtami'], 'ganesh_chaturthi': ['ganesh chaturthi', 'ganesh', 'ganpati', 'vinayaka'],
     'navratri': ['navratri', 'navaratri'],
+    'ugadi': ['ugadi', 'gudi padwa'], 'ram_navami': ['ram navami', 'rama navami'],
+    'maha_shivratri': ['shivratri', 'maha shivratri', 'shivaratri'], 'raja_parba': ['raja parba', 'raja', 'raja sankranti'],
+    'eid_ul_adha': ['bakrid', 'eid ul adha', 'eid al adha', 'bakri eid'], 'womens_day': ["women's day", 'womens day'],
+    'odisha_day': ['odisha day', 'utkala dibasa'], 'mothers_day': ["mother's day", 'mothers day'],
+    'fathers_day': ["father's day", 'fathers day'], 'friendship_day': ['friendship day'],
+    'teachers_day': ["teachers' day", "teacher's day", 'teachers day'], 'childrens_day': ["children's day", 'childrens day'],
+}
+
+# How each festival the almanac computes appears in the planner: its name, what to stock, whether it is big in Odisha.
+# Festivals of the cited calendar keep their own entry (FESTIVALS); these fill every other year.
+HORIZON_YEARS = 8
+INFO = {
+    'ugadi': {'name': 'Ugadi · Gudi Padwa', 'groups': ['sweets', 'puja', 'flowers', 'dry_fruits']},
+    'ram_navami': {'name': 'Ram Navami', 'groups': ['puja', 'flowers', 'sweets', 'fasting']},
+    'rath_yatra': {'name': 'Rath Yatra', 'groups': ['puja', 'flowers', 'sweets'], 'local': True},
+    'raksha_bandhan': {'name': 'Raksha Bandhan', 'groups': ['rakhi', 'gift_packs', 'chocolates', 'sweets', 'dry_fruits']},
+    'janmashtami': {'name': 'Janmashtami', 'groups': ['puja', 'sweets', 'flowers', 'fasting']},
+    'ganesh_chaturthi': {'name': 'Ganesh Chaturthi', 'groups': ['modak', 'puja', 'flowers', 'sweets']},
+    'navratri': {'name': 'Navratri', 'groups': ['fasting', 'puja', 'flowers']},
+    'durga_puja': {'name': 'Durga Puja', 'groups': ['puja', 'flowers', 'sweets', 'gift_packs', 'decor'], 'local': True},
+    'dussehra': {'name': 'Dussehra', 'groups': ['puja', 'flowers', 'sweets']},
+    'karwa_chauth': {'name': 'Karwa Chauth', 'groups': ['puja', 'dry_fruits', 'sweets', 'flowers']},
+    'diwali': {'name': 'Diwali', 'groups': ['diyas_candles', 'puja', 'flowers', 'decor', 'sweets', 'dry_fruits', 'gift_packs']},
+    'chhath': {'name': 'Chhath Puja', 'groups': ['puja', 'flowers', 'til_jaggery']},
+    'kartika_purnima': {'name': 'Kartika Purnima · Boita Bandana', 'groups': ['diyas_candles', 'flowers', 'puja'], 'local': True},
+    'maha_shivratri': {'name': 'Maha Shivratri', 'groups': ['puja', 'flowers', 'fasting']},
+    'holi': {'name': 'Holi', 'groups': ['holi_colours', 'sweets', 'gift_packs', 'party']},
+    'sankranti': {'name': 'Makar Sankranti', 'groups': ['til_jaggery', 'sweets', 'puja']},
+    'raja_parba': {'name': 'Raja Parba', 'groups': ['sweets', 'flowers', 'gift_packs'], 'local': True},
+    'eid_ul_fitr': {'name': 'Eid ul-Fitr', 'groups': ['sewai', 'dry_fruits', 'made_for_eid', 'sweets', 'gift_packs']},
+    'eid_ul_adha': {'name': 'Eid ul-Adha (Bakrid)', 'groups': ['dry_fruits', 'sweets', 'gift_packs']},
+    'new_year': {'name': "New Year's Eve", 'groups': ['party', 'cakes', 'balloons', 'decor', 'gift_packs']},
+    'valentines': {'name': "Valentine's Day", 'groups': ['made_for_valentines', 'chocolates', 'flowers', 'perfumes', 'gift_packs', 'cakes']},
+    'womens_day': {'name': "Women's Day", 'groups': ['made_for_womens_day', 'flowers', 'chocolates', 'perfumes', 'gift_packs']},
+    'odisha_day': {'name': 'Odisha Day · Utkala Dibasa', 'groups': ['sweets'], 'local': True},
+    'mothers_day': {'name': "Mother's Day", 'groups': ['flowers', 'chocolates', 'perfumes', 'cakes', 'gift_packs']},
+    'fathers_day': {'name': "Father's Day", 'groups': ['grooming', 'perfumes', 'chocolates', 'cakes', 'gift_packs']},
+    'friendship_day': {'name': 'Friendship Day', 'groups': ['chocolates', 'gift_packs', 'party', 'balloons']},
+    'teachers_day': {'name': "Teachers' Day", 'groups': ['made_for_teachers_day', 'flowers', 'chocolates', 'gift_packs']},
+    'childrens_day': {'name': "Children's Day", 'groups': ['chocolates', 'party', 'balloons', 'cakes']},
+    'christmas': {'name': 'Christmas', 'groups': ['cakes', 'made_for_christmas', 'gift_packs', 'chocolates', 'decor', 'diyas_candles']},
 }
 
 
+def computed_festivals(first_year: int, years: int) -> list:
+    """Festival entries computed by the almanac for `years` years from `first_year`, in the cited calendar's shape,
+    with provenance METHOD and the rule that decided each date. A festival the cited calendar already has (same
+    festival, within three days) is left to the cited entry."""
+    from src.seasonal import almanac as A
+    cited = [(re.sub(r'_20\d\d$', '', f['key']), date.fromisoformat(f['day'])) for f in FESTIVALS]
+    out = []
+    for y in range(first_year, first_year + years):
+        months = A.lunar_months(y)
+        for key, info in INFO.items():
+            for start, day, end, how in A.compute(key, y, months):
+                if any(k == key and abs((d - day).days) <= 3 for k, d in cited):
+                    continue
+                kind = A.RULES[key]['kind']
+                if kind == 'weekday':
+                    note = f"{['First', 'Second', 'Third', 'Fourth'][A.RULES[key]['n'] - 1]} Sunday of {day.strftime('%B')}."
+                else:
+                    note = {'tithi': f'Computed for Bhubaneswar from the lunar calendar ({how}). Panchangs can differ by a day.',
+                            'sankranti': 'Computed: the day the sun enters its sidereal sign (Lahiri).',
+                            'islamic': 'Approximate: set by the sighting of the moon, which can move it by a day either way.',
+                            'fixed': 'Fixed date.'}[kind]
+                out.append({'key': f'{key}_{day.year}' if day.year == y else f'{key}_{y}', 'name': info['name'],
+                            'start': start.isoformat(), 'end': end.isoformat(), 'day': day.isoformat(),
+                            'local': bool(info.get('local')), 'groups': list(info['groups']), 'note': note, 'sources': [],
+                            'provenance': 'METHOD', 'rule': how, 'approximate': kind == 'islamic'})
+    keys = [f['key'] for f in out]
+    for i, f in enumerate(out):                         # an Islamic festival can fall twice in one Gregorian year
+        if keys.count(f['key']) > 1:
+            f['key'] = f"{f['key']}_{f['day'][5:7]}"
+    return out
+
+
 def aliases(f):
-    return ALIASES[re.sub(r'_20\d\d$', '', f['key'])]
+    return ALIASES[re.sub(r'(_20\d\d)(_\d\d)?$', '', f['key'])]
 
 
 def _compile(g):
@@ -297,12 +434,19 @@ def build():
     observed = set(L.real_observed_price_only(real).observation_key)
     groups = {k: {**{f: g[f] for f in ('label', 'icon', 'words', 'include')}, **group_summary(real, k, observed)}
               for k, g in GROUPS.items()}
-    for f in FESTIVALS:
+    from src.seasonal import almanac as A
+    first = min(date.today().year, int(FESTIVALS[0]['start'][:4]))
+    cal = [{**f, 'provenance': 'EXTERNAL'} for f in FESTIVALS] + computed_festivals(first, HORIZON_YEARS + 1)
+    for f in cal:
         assert f['start'] <= f['day'] <= f['end'] and all(k in GROUPS for k in f['groups']), f['key']
+    agree = A.check()
     return {
         'built': date.today().isoformat(), 'calendar_checked': CHECKED, 'snapshot_date': SNAPSHOT_DATE,
-        'provenance': {'calendar': 'EXTERNAL', 'groups': 'METHOD', 'listings': 'REAL'},
-        'festivals': sorted(({**f, 'aliases': aliases(f)} for f in FESTIVALS), key=lambda f: f['start']), 'groups': groups,
+        'provenance': {'calendar': 'EXTERNAL where cited, METHOD where computed', 'groups': 'METHOD', 'listings': 'REAL'},
+        'horizon': [min(f['start'] for f in cal), max(f['end'] for f in cal)],
+        'almanac_check': {'festivals': len(agree), 'same_day': sum(r[3] == 0 for r in agree),
+                          'same_span': sum(r[4] == r[5] for r in agree)},
+        'festivals': sorted(({**f, 'aliases': aliases(f)} for f in cal), key=lambda f: (f['start'], f['key'])), 'groups': groups,
         'snapshot_rows': int(len(real)),
         'claim_limit': ('When a product is in season comes from the festival calendar. How much more it sells cannot be '
                         'measured: the data has no orders. Listings and stock status are from the one observed day, '

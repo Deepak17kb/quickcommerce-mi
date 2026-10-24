@@ -1,0 +1,19 @@
+# The project's own Python analyst as a public, read-only web service (Render blueprint).
+# One click: https://render.com/deploy?repo=https://github.com/Deepak17kb/quickcommerce-mi
+# Then put the service's URL in site/config.json ("api") and publish the site (python scripts/deploy_pages.py):
+# the live site on GitHub Pages asks this analyst, and answers with its own engine whenever the service is asleep.
+services:
+  - type: web
+    name: qcom-analyst
+    runtime: python
+    plan: free
+    region: singapore              # nearest to the users in India
+    buildCommand: pip install -r requirements-server.txt && python scripts/fetch_outputs.py
+    startCommand: python scripts/serve_site.py --public
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: QCOM_ALLOW_ORIGIN
+        value: https://deepak17kb.github.io

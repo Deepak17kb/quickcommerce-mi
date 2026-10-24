@@ -72,3 +72,10 @@ def test_provenance_filters(ml):
     assert L.synthetic_only(ml).data_status.eq('SYNTHETIC').all()
     pref = L.preferred_only(ml)
     assert pref.is_preferred_listing.eq(1).all() and len(ml) - len(pref) == 339
+
+
+def test_load_real_reads_exactly_the_real_rows():
+    """The filtered reader the analyst uses gives the same rows and columns as real_only(load_raw())."""
+    fast, full = L.load_real(), L.real_only(L.load_raw()).reset_index(drop=True)
+    assert len(fast) == 21_949 and fast.data_status.eq("REAL").all()
+    pd.testing.assert_frame_equal(fast, full)

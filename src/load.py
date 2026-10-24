@@ -44,6 +44,24 @@ def load_raw(platform: str | None = None) -> pd.DataFrame:
     return _read(RAW, f"{platform or '*'}_RAW.parquet", 'raw data')
 
 
+def load_real() -> pd.DataFrame:
+    """The REAL rows of the raw layer, and only those: the row filter is applied while reading, so the 588,840
+    SYNTHETIC rows never become a DataFrame. Same rows and columns as real_only(load_raw()); the index runs 0..n-1.
+    Arrow still decompresses each file to filter it and keeps the freed buffers in its memory pool, so the pool is
+    handed back to the system afterwards: measured 2026-10-20, the process keeps +57 MB instead of +859 MB (load_raw).
+    That is the difference between the analyst's server fitting in 512 MB and not."""
+    files = sorted(RAW.glob('*_RAW.parquet'))
+    if not files:
+        raise FileNotFoundError(f'No raw data found in {RAW}.')
+    frames = [pd.read_parquet(f, filters=[('data_status', '==', 'REAL')]) for f in files]
+    try:
+        import pyarrow as pa
+        pa.default_memory_pool().release_unused()
+    except (ImportError, AttributeError):          # an older pyarrow keeps the pool: correct, only larger
+        pass
+    return pd.concat([f for f in frames if len(f)], ignore_index=True)
+
+
 def load_targets() -> pd.DataFrame:
     """ML_targets.parquet as stored: observation_key, every target, data_status, split."""
     if not TARGETS_PATH.exists():

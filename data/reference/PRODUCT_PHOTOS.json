@@ -1,0 +1,77 @@
+{
+ "checked": "2026-10-24",
+ "source": "Open Food Facts (openfoodfacts.org), search.openfoodfacts.org",
+ "license": "CC BY-SA 3.0: reuse with credit",
+ "searched": 94,
+ "matched": 3,
+ "rule": "brand at the start of our name; every word of their name in ours (at least two); at least half of ours in theirs; a gift pack only matches a gift pack; same pack preferred",
+ "photos": {
+  "Frooti Mango Drink - 2 Ltr|2 ltr": {
+   "name": "Frooti Mango Drink - 2 Ltr",
+   "pack": "2 ltr",
+   "image": "https://images.openfoodfacts.org/images/products/890/257/910/3170/front_en.7.200.jpg",
+   "image_large": "https://images.openfoodfacts.org/images/products/890/257/910/3170/front_en.7.400.jpg",
+   "shows": "FROOTI Mango Drink, 600 ml",
+   "source": "https://world.openfoodfacts.org/product/8902579103170",
+   "code": "8902579103170",
+   "license": "CC BY-SA 3.0",
+   "credit": "Open Food Facts contributors",
+   "same_pack": false,
+   "match": {
+    "brand": true,
+    "name_score": 1.0,
+    "cover": 1.0,
+    "shared_words": [
+     "drink",
+     "mango"
+    ]
+   }
+  },
+  "Bingo Hot & Spicy Korean Style Potato Chips|87.5 g": {
+   "name": "Bingo Hot & Spicy Korean Style Potato Chips",
+   "pack": "87.5 g",
+   "image": "https://images.openfoodfacts.org/images/products/890/172/501/8771/front_en.3.200.jpg",
+   "image_large": "https://images.openfoodfacts.org/images/products/890/172/501/8771/front_en.3.400.jpg",
+   "shows": "Bingo! Hot and spicy Korean style, 42g",
+   "source": "https://world.openfoodfacts.org/product/8901725018771",
+   "code": "8901725018771",
+   "license": "CC BY-SA 3.0",
+   "credit": "Open Food Facts contributors",
+   "same_pack": false,
+   "match": {
+    "brand": true,
+    "name_score": 1.0,
+    "cover": 0.67,
+    "shared_words": [
+     "hot",
+     "korean",
+     "spicy",
+     "style"
+    ]
+   }
+  },
+  "Bingo Original Hot & Spicy Korean Style Potato Chips|85 g": {
+   "name": "Bingo Original Hot & Spicy Korean Style Potato Chips",
+   "pack": "85 g",
+   "image": "https://images.openfoodfacts.org/images/products/890/172/501/8771/front_en.3.200.jpg",
+   "image_large": "https://images.openfoodfacts.org/images/products/890/172/501/8771/front_en.3.400.jpg",
+   "shows": "Bingo! Hot and spicy Korean style, 42g",
+   "source": "https://world.openfoodfacts.org/product/8901725018771",
+   "code": "8901725018771",
+   "license": "CC BY-SA 3.0",
+   "credit": "Open Food Facts contributors",
+   "same_pack": false,
+   "match": {
+    "brand": true,
+    "name_score": 1.0,
+    "cover": 0.67,
+    "shared_words": [
+     "hot",
+     "korean",
+     "spicy",
+     "style"
+    ]
+   }
+  }
+ }
+}

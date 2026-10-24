@@ -35,6 +35,7 @@ refuses a request whose Host is not localhost. Routes:
 | `GET /manifest.webmanifest`, `/icon-192.png`, `/icon-512.png`, `/apple-touch-icon.png` | the home-screen icon and app name, written by `build_site.py` |
 | `POST /api/unlock` | Wi-Fi mode only: checks the six-digit code |
 | `GET /sw.js` | the service worker |
+| `OPTIONS /api/health`, `/api/ask` | public mode only: the browser's CORS preflight from an allowed origin (the live site) |
 | `GET /api/metrics` | uptime, requests by route and status, analyst latency (p50, p95, max), answer-cache hits, rate-limit refusals. Counters only: no question text, no device address |
 
 Every response carries a content security policy (scripts and requests to this server only, fonts from Google Fonts),
@@ -44,6 +45,13 @@ mode, asking and adding products are rate-limited per device (429 with `Retry-Af
 not. An early answer (403, 404, 413, 429) reads the request body first: closing on an unread body resets the
 connection on Windows, and the sender never sees the answer. The analyst is deterministic for a question, so its
 answers are kept in a 256-entry LRU cache.
+
+**Public mode** (`--public`, used by `render.yaml`): binds `0.0.0.0` on `$PORT` (`--host` to bind elsewhere, e.g.
+127.0.0.1 to try it without opening the machine), answers any Host, writes nothing (the product routes and the code
+route answer 403 and the product list is empty), rate-limits every device by the last address the host's proxy put in
+`X-Forwarded-For`, and sends CORS headers for `/api/health` and `/api/ask` to the origins in `$QCOM_ALLOW_ORIGIN`
+(default the live site) and nowhere else. It serves the site that `scripts/fetch_outputs.py` put in place and never
+rebuilds it. The analyst reads the observed rows through `src.load.load_real()`, which keeps the process near 200 MB.
 
 Only the product routes write, and only to `data/user_added/`. No request starts a long job: a question about a
 listing with no saved chain is answered "no saved chain", not by running the chain live. If port 8000 is taken, the
@@ -195,8 +203,16 @@ What it does not do: run a new simulation, or build a chain for a listing that h
   asks for reduced motion, and for automated browsers, so the checks and screenshots always see the final state.
 - **Offline.** On https (the live site) and on localhost, `sw.js` keeps the last page it saw. Network first: an online
   visit always gets the newest build. The browser check confirms the worker starts and holds the page.
-- **Live site.** `scripts/deploy_pages.py` publishes the built page to GitHub Pages. With no Python server behind it,
-  the page runs as it does from disk: the analyst in the page, products you add kept in your browser.
+- **Live site.** Every build also writes `site_dist/` (tracked in git); `.github/workflows/pages.yml` deploys it to
+  GitHub Pages whenever a push to main changes it. `scripts/deploy_pages.py` stages, commits and pushes in one go,
+  and `--check site_dist` is what the workflow runs before it deploys. The README's tests, pipeline, contracts,
+  analyst and claims badges are `site_dist/badges/*.json`, written from the run each build reads.
+- **The analyst behind the live site.** `site/config.json` (`"api"`) may name the project's public Python analyst
+  (`render.yaml`: `serve_site.py --public`). The page asks its own server first, then that analyst; while a free host
+  sleeps the page answers with its own engine and keeps waking the host, then switches to it. Products go to a server
+  only if it keeps them (`/api/health` says `"writes"`); the public server never does.
+- **Export / Import** (Products page): your products, photos included, as one JSON file, to move them between browsers
+  and devices. Importing skips what is already on the list and anything that does not pass the same checks as the form.
 
 ## Checking it
 

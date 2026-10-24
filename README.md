@@ -10,14 +10,20 @@ an AI analyst that cites a source for every claim, and a storefront-style web ap
 
 [![Live site](https://img.shields.io/badge/LIVE_SITE-open_Qcom-c9f24a?style=for-the-badge&labelColor=111216)](https://deepak17kb.github.io/quickcommerce-mi/)
 [![CI](https://img.shields.io/github/actions/workflow/status/Deepak17kb/quickcommerce-mi/ci.yml?branch=main&style=for-the-badge&label=CI&labelColor=111216)](https://github.com/Deepak17kb/quickcommerce-mi/actions/workflows/ci.yml)
+[![Pages](https://img.shields.io/github/actions/workflow/status/Deepak17kb/quickcommerce-mi/pages.yml?branch=main&style=for-the-badge&label=deploy&labelColor=111216)](https://github.com/Deepak17kb/quickcommerce-mi/actions/workflows/pages.yml)
+
+<!-- the next five badges are read from the last run itself (site_dist/badges/*.json, written by every site build) -->
+![Tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FDeepak17kb%2Fquickcommerce-mi%2Fmain%2Fsite_dist%2Fbadges%2Ftests.json)
+![Pipeline](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FDeepak17kb%2Fquickcommerce-mi%2Fmain%2Fsite_dist%2Fbadges%2Fpipeline.json)
+![Data contracts](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FDeepak17kb%2Fquickcommerce-mi%2Fmain%2Fsite_dist%2Fbadges%2Fcontracts.json)
+![Analyst](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FDeepak17kb%2Fquickcommerce-mi%2Fmain%2Fsite_dist%2Fbadges%2Fanalyst.json)
+![Claims](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FDeepak17kb%2Fquickcommerce-mi%2Fmain%2Fsite_dist%2Fbadges%2Fclaims.json)
 
 ![Python](https://img.shields.io/badge/Python-3.13%2B-3776AB?logo=python&logoColor=white)
 ![pandas](https://img.shields.io/badge/pandas-3.0-150458?logo=pandas&logoColor=white)
 ![LightGBM](https://img.shields.io/badge/LightGBM-gradient_boosting-2a78d6)
-![Tests](https://img.shields.io/badge/tests-247_passing-0c8a4b)
-![Data contracts](https://img.shields.io/badge/data_contracts-21%2F21_hold-c9f24a?labelColor=111216)
-![Pipeline](https://img.shields.io/badge/pipeline-42%2F42_steps-c9f24a?labelColor=111216)
 ![No framework](https://img.shields.io/badge/site-vanilla_JS_%C2%B7_one_file_%C2%B7_offline--ready-111216)
+[![License](https://img.shields.io/github/license/Deepak17kb/quickcommerce-mi)](LICENSE)
 
 ### [Open the live site](https://deepak17kb.github.io/quickcommerce-mi/) · [What it does](#what-you-can-do-on-the-site) · [Results](#results) · [How it works](#how-it-works) · [Run it locally](#run-it-locally)
 
@@ -53,15 +59,15 @@ fast does it arrive**. It answers them with a pipeline that runs from raw observ
 <table>
 <tr>
 <td width="50%"><img src="docs/assets/products.png" alt="One listing traced through every layer"><br><b>Products</b>: tap a listing and follow it through every layer: what was seen, which models apply, what they predicted next to what happened, and the move the optimizer recommends.</td>
-<td width="50%"><img src="docs/assets/simulate.png" alt="Simulate a price move"><br><b>Simulate</b>: move a platform's price, run a promo or take stock away, and see who ends up cheapest over the next twelve checks, with and without competitors responding.</td>
+<td width="50%"><img src="docs/assets/simulate.png" alt="Simulate a price move"><br><b>Simulate</b>: ask in a sentence ("if <i>Blinkit</i> <i>cuts</i> its prices by <i>5%</i> on <i>snacks</i>...") or tap a ready-made scenario, and read the answer in plain words: out of every 100 products, how many each app is cheapest for. Optimize works the same way: name a goal, get the smallest price cut that reaches it.</td>
 </tr>
 <tr>
 <td><img src="docs/assets/analyst.png" alt="The analyst answers with sources"><br><b>Analyst</b>: ask in plain words. Each claim carries its source and its tag; questions about sales or revenue are refused, because the data has no orders.</td>
-<td><img src="docs/assets/basket.png" alt="The basket compares four apps"><br><b>Basket</b>: add products and see which of the four apps would charge least for all of it. Your own products (photo, prices) can join in.</td>
+<td><img src="docs/assets/basket.png" alt="The basket compares four apps"><br><b>Basket</b>: add products and see which of the four apps would charge least for all of it, then shop it there: each item opens in that app's own search, one tap from its cart. Your own products (photo, prices) can join in, and export to another device.</td>
 </tr>
 <tr>
 <td><img src="docs/assets/palette.png" alt="Go anywhere with Ctrl K"><br><b>Go anywhere</b>: press <kbd>Ctrl</kbd> <kbd>K</kbd> (or <kbd>/</kbd>) to jump to any page, product or festival, or to ask a question.</td>
-<td><img src="docs/assets/festive.png" alt="Festive planner"><br><b>Festive planner</b>: every festival of the next twelve months, a "stock up by" date, and which seasonal products Blinkit listed.</td>
+<td><img src="docs/assets/festive.png" alt="Festive planner"><br><b>Festive planner</b>: every festival and special day of the next twelve months, Diwali to Father's Day, with a "stock up by" date and what to stock. The calendar computes itself years ahead from the sun and moon, the way a panchang does, and matches all 19 published 2026-27 dates exactly.</td>
 </tr>
 <tr>
 <td><img src="docs/assets/models.png" alt="Models page"><br><b>Models</b>: each model against its baselines, with a chart drawn from its own saved metrics and a line on what it may and may not claim.</td>
@@ -85,7 +91,8 @@ fast does it arrive**. It answers them with a pipeline that runs from raw observ
 - Hover a product and it lifts, its picture turns and the add button rises; a light follows the pointer across the
   mode cards; sections ease in as you scroll; headline numbers count up. All of it switches off for anyone whose
   system asks for reduced motion.
-- Every product picture is drawn from the product's name, pack and category, never a brand photo.
+- Real product photos from [Open Food Facts](https://world.openfoodfacts.org) (openly licensed, CC BY-SA, credited on the Data & trust page), used only when brand and name match closely; every other product keeps a picture drawn from its name, pack and category. Photos from Google or the apps themselves are not used: they belong to the brands and the apps.
+- New here? Home opens with three things to try, and every Simulate and Optimize page has a three-step guide and a "what do these words mean?" glossary.
 </details>
 
 ## The data, honestly
@@ -94,14 +101,17 @@ Real observations cannot be collected from these apps programmatically: there ar
 exists because a person collected it by hand. The other three apps, and Blinkit's history, are **simulated**, with the
 owner's informed consent, and **every row says which it is**:
 
-| Platform | Rows | What it is | `data_status` |
+| Platform | Rows | What it is | Tag on the site |
 |---|---:|---|---|
-| Blinkit | 21,949 | observed on one day, 10 Jul 2026 | `REAL` |
-| Blinkit | 148,740 | simulated 30-day panel | `SYNTHETIC` |
-| Swiggy Instamart | 150,480 | simulated | `SYNTHETIC` |
-| Flipkart Minutes | 142,320 | simulated | `SYNTHETIC` |
-| BigBasket | 147,300 | simulated | `SYNTHETIC` |
+| Blinkit | 21,949 | observed on one day, 10 Jul 2026 | **Seen 10 Jul** |
+| Blinkit | 148,740 | simulated 30-day panel | **Lab** |
+| Swiggy Instamart | 150,480 | simulated 30-day panel | **Lab** |
+| Flipkart Minutes | 142,320 | simulated 30-day panel | **Lab** |
+| BigBasket | 147,300 | simulated 30-day panel | **Lab** |
 | **Total** | **610,789** | | |
+
+In the data, the `data_status` column carries the same tag on every row, and `src.load.real_only(df)` keeps only the
+observed ones.
 
 Product names, brands, categories, pack sizes, store names and coordinates are real throughout. On simulated rows,
 prices, stock, ETA, offers and badges come from `SIMULATED_GENERATOR_v15.1`, which is calibrated to the observed day
@@ -199,14 +209,16 @@ against the saved output each came from, so a number that drifts after a rerun f
 **Local server (`scripts/serve_site.py`).** Standard library only. Gzip and ETag revalidation (a reload of the
 2.7 MB page costs a 304), a content security policy and no-framing headers, a Host check against DNS rebinding, a
 six-digit code and per-device rate limits for phones on the same Wi-Fi, an LRU cache for the analyst's answers,
-`/api/metrics` (latency percentiles, cache hits) and a JSON 500 for any unexpected error. The live site needs none of
-it: it runs on the analyst engine built into the page.
+`/api/metrics` (latency percentiles, cache hits) and a JSON 500 for any unexpected error. `--public` turns it into a
+read-only public service (any host, `$PORT`, per-device limits behind the host's proxy, CORS for the live site only,
+about 200 MB of memory): see [the live Python analyst](#the-live-python-analyst).
 
-**Tests.** 247 tests, including leakage, split and identifier guards, the planted-violation controls, server
-behaviour, a node run of every page and control, and the in-browser analyst re-scored on both question sets. CI
-rebuilds the feature layer from the frozen data on every push and runs the contracts and guardrail tests. A
-headless-browser check visits every page in light, dark, phone, tablet and wide layouts and fails on any script error
-or sideways scroll.
+**Tests.** The full suite (count in the badge above, read from the last run) covers leakage, split and identifier
+guards, the planted-violation controls, server behaviour including the public mode, publishing and the fetch script's
+safety checks, a node run of every page and control, and the in-browser analyst re-scored on both question sets. CI
+runs on every push: one job rebuilds the feature layer from the frozen data and checks the contracts; another fetches
+the released run outputs and runs **every** test. A headless-browser check visits every page in light, dark, phone,
+tablet and wide layouts and fails on any script error, blocked resource or sideways scroll.
 
 ## Run it locally
 
@@ -215,21 +227,58 @@ git clone https://github.com/Deepak17kb/quickcommerce-mi.git
 cd quickcommerce-mi
 python -m venv .venv && source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-python -m src.pipeline.build_features    # the ML layer from data/raw (a few minutes; prints the leakage check)
-python scripts/run_all.py                # everything, in dependency order, then the tests and the website
-python scripts/serve_site.py             # Qcom on http://localhost:8000, with the project's own analyst behind it
 ```
 
-`python scripts/run_all.py` takes about three hours on a laptop (the survival model alone is 40 minutes);
-`--dry-run` shows the plan and `--resume` continues a run that stopped. Other entry points:
+**The quick way (minutes).** Every full run is published as a [release](https://github.com/Deepak17kb/quickcommerce-mi/releases):
+the ML layer and every model output, as one zip. Fetch it and everything works at once:
+
+```bash
+python scripts/fetch_outputs.py          # data/ml + outputs/ from the latest release; refused if its sha256 differs
+python scripts/serve_site.py             # Qcom on http://localhost:8000, with the project's own Python analyst behind it
+python -m pytest -q                      # every test
+```
+
+**The full way (about three hours).** Rebuild everything from the frozen raw data:
+
+```bash
+python scripts/run_all.py                # 42 steps in dependency order, then the tests and the website
+```
+
+The survival model alone takes 40 minutes; `--dry-run` shows the plan and `--resume` continues a run that stopped.
+Other entry points:
 
 ```bash
 python -m src.pipeline.contracts                  # the 21 data contracts
 python -m src.analyst "What happens if Blinkit cuts prices by 3 percent?"
 python scripts/check_claims.py                    # every headline number against the output behind it
-python scripts/deploy_pages.py                    # publish outputs/site to GitHub Pages
+python scripts/deploy_pages.py                    # publish the built site (commit + push; the Pages workflow deploys it)
+python scripts/release_outputs.py                 # publish a finished run's outputs as a release
 ```
+
+## Publishing
+
+**The live site updates itself.** Every site build writes `site_dist/` (the page, its service worker, icons, and the
+badge files above). It is tracked in git, and the Pages workflow deploys it whenever a push to `main` changes it, so a
+commit and a push are the whole deploy (`python scripts/deploy_pages.py` does both).
+
+**Run outputs are released, not committed.** The ML layer and model outputs change with every run and would bloat the
+history, so each finished run is published as a GitHub Release (`scripts/release_outputs.py`, refused unless every step
+and test passed), and `data/OUTPUTS_RELEASE.json` pins the one this commit was built with. Products a person adds on
+their own machine (`data/user_added/`, photos from their camera) are never committed or released.
+
+### The live Python analyst
+
+GitHub Pages serves files only, so the live site answers with the analyst engine built into the page: the same
+refusal rules, routing and sources as the Python analyst, scored on the project's own question sets (badge above). To
+put the project's own Python analyst behind it, deploy the read-only server in one click, then paste its URL into
+`site/config.json` and publish:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Deepak17kb/quickcommerce-mi)
+
+The blueprint (`render.yaml`) installs four packages, fetches the released outputs and starts
+`serve_site.py --public`. A free service sleeps when idle; the page keeps answering with its own engine while it wakes
+and switches to the live analyst once it does. Products you add on the live site stay in your browser: **Export** and
+**Import** on the Products page move them, photos included, to another browser or device.
 
 <details>
 <summary><b>For data scientists: loading the data safely</b></summary>
@@ -269,13 +318,21 @@ src/chain/             one product x store through every layer
 src/audit/, planner/   what the data can support; how much more data would be enough
 src/seasonal/          the festive planner
 site/                  the website: shell, styles, pages, in-browser analyst, service worker
-scripts/               run_all, build_site, serve_site, deploy_pages, checks
+scripts/               run_all, build_site, serve_site, deploy_pages, release_outputs, fetch_outputs, checks
+site_dist/             the published site (written by every build; a push deploys it)
 data/raw/              the frozen observation layer (parquet, hash-checked)
 data/reference/        catalog, stores, schedule, audits, ML schema
 docs/                  how each layer was built and what it may claim
-tests/                 247 tests
+tests/                 the full test suite
 ```
 </details>
+
+## License
+
+The code is released under the [MIT License](LICENSE). The data in `data/` is shared for learning and research with
+the same permission. Product, brand and store names belong to their owners and appear only to identify what was
+listed. The observed Blinkit prices are one day's shelf prices (10 Jul 2026), and every simulated number is tagged
+**Lab**: neither is a statement about any company's sales, revenue or pricing strategy.
 
 ## About
 

@@ -558,3 +558,89 @@ UI, a live deployment, a new GitHub repository on their profile and an attractiv
   `scripts/readme_assets.py`; refresh them after a change to `site/`.
 - `scripts/build_site.py` held a dead duplicate of `model_charts()` that copied the card list and called itself; it
   only worked because a second definition shadowed it. Removed.
+
+## 14. Second pass of 2026-10-20: settled facts — do not re-derive
+
+The owner listed six limits of the first pass and asked to "fix these". What each became:
+
+- **Models retrained.** A full `python scripts/run_all.py` (not --resume) ran on 2026-10-20 with the DAG runner and the
+  contract gate. It took three launches (a session end, a closed console window, then idle sleep at 01:42 on
+  2026-10-22 each killed it; see section 15) and finished 2026-10-23 with 42/42 steps: every model refit, and the claims
+  ledger still 37/37 on the refit outputs. §13's "models were NOT refitted" describes the first pass only.
+- **The live site and the Python analyst.** GitHub Pages serves files only. The page asks, in order: its own server
+  (`api/health` relative), then the public analyst named in `site/config.json` (`"api"`, or `$QCOM_API` at build time;
+  https, or http://localhost / 127.0.0.1 for trying it), else its own engine. A sleeping free host is woken in the
+  background (one probe of up to 75 s) and the page switches to it when it answers. `serve_site.py --public`
+  (`render.yaml`, Render free tier, one-click button in the README) is read-only: any Host, `$PORT`, no writes (403),
+  empty product list, rate limits for every device keyed on the LAST `X-Forwarded-For` entry, CORS for `/api/health`
+  and `/api/ask` to `$QCOM_ALLOW_ORIGIN` only. It was NOT deployed: that needs the owner's Render login; `config.json`
+  stays empty until a URL exists. `src.load.load_real()` reads the REAL rows with a row filter and releases Arrow's
+  pool: the server process fell from 449 MB to 197 MB (measured 2026-10-20), so it fits a 512 MB free tier.
+  `tools.real_rows()` uses it; every caller aggregates, so the new 0..n-1 index changes nothing (test-enforced equality).
+- **Products on the live site** stay in the visitor's browser by design; Export / Import (Products page) move them as
+  one JSON file with photos. `/api/health` says `"writes"`, and the page keeps products on a server only if it does.
+- **The live site updates itself.** `site_dist/` is tracked; every build writes it through `deploy_pages.stage()`
+  (refuses foreign files, never deletes what it did not write); `.github/workflows/pages.yml` deploys it on any push
+  to main that changes it (Pages build type: workflow; the old `gh-pages` branch was removed). `deploy_pages.py` =
+  stage + commit site_dist only + push.
+- **Run outputs are released, not committed.** `scripts/release_outputs.py` zips data/ml + outputs/ (not screenshots,
+  never data/user_added) into a GitHub Release, refused unless every step and test of the run passed, and writes
+  `data/OUTPUTS_RELEASE.json` (tracked). `scripts/fetch_outputs.py` (stdlib only) downloads exactly that file, refuses
+  a sha256 mismatch and any member outside data/ml/ or outputs/ (absolute, '..', backslash, drive, link), and keeps
+  existing files unless --force. CI's `full-suite` job fetches it and runs every test on Linux (requirements-ci.txt,
+  exact versions).
+- **License.** MIT for the code (LICENSE, holder "Deepak Kumar Behera"); README states the data is shared for learning
+  and research with the same permission, names belong to their owners, and nothing is a statement about sales.
+- **Badges read the run.** `build_site.badges()` writes shields.io endpoint files (tests, pipeline, contracts, analyst,
+  claims) into site_dist/badges; the README points at their raw URLs. A skipped test is reported apart ("N passing,
+  k skipped") and no longer counted as not passing on the site either (`meta.run.tests` = tests that ran).
+- **README wording (owner, 2026-10-20: "replace all synthetic with real in readme").** Declined as asked: relabelling
+  simulated rows as real would misstate the data. Done instead: the README holds no "synthetic"; the data table shows
+  the site's tags (Seen 10 Jul / Lab) and points to `src.load.real_only()`. Keep it that way: "simulated" / "Lab" in
+  prose, never "real" for a simulated number.
+
+## 15. Third pass, 2026-10-23: settled facts — do not re-derive
+
+The owner asked for a festive planner that keeps up with every coming festival and special day (Rakhi, Father's Day),
+a way from the basket to the cheapest app's cart, Simulate and Optimize that anyone can use, an easier site overall,
+and "actual real images of products ... from Google or directly Blinkit".
+
+- **The calendar computes itself (src/seasonal/almanac.py, METHOD).** Sun: Meeus ch. 25. Moon: the 31 largest terms of
+  Meeus Table 47.A. Tithi = elongation / 12 deg, read at Bhubaneswar's sunrise, midday, afternoon (aparahna), dusk
+  (pradosh), moonrise or midnight as each festival's tradition says. Amanta months named by the sidereal sign (Lahiri)
+  at the opening new moon; two new moons in one sign make an adhika month (2026: Adhik Jyeshtha, 17 May - 15 Jun,
+  test-enforced). Sankrantis, nth-Sunday days (Mother's Day 2nd Sunday of May, Father's Day 3rd Sunday of June,
+  Friendship Day 1st Sunday of August), fixed days, and the tabular Islamic calendar for Eid (approximate: moon
+  sighting). It reproduces all 19 cited 2026-27 dates exactly, day AND span (Dhanteras to Bhai Dooj; Durga Puja is
+  the five days ending on Dashami, because Shashthi can span two sunrises; Navratri ends the day before Vijayadashami).
+  festive.py keeps the cited table (EXTERNAL) and fills every other festival and year (METHOD, `rule` says how) for
+  HORIZON_YEARS = 8 ahead; a computed festival within 3 days of a cited one is dropped. The page shows the next 12
+  months (`upcoming(366)`) and labels each date's provenance.
+- **Special-day groups were read against the observed names before going in.** chocolates (milkshakes, cakes, cold
+  coffee excluded), perfumes (fabric conditioners excluded), men's grooming, soft drinks & party snacks, balloons &
+  party props (fridge magnets excluded), and "made for the day" groups found by the occasion's own name (Teacher's Day
+  bouquets, Valentine chocolate gift packs, Christmas wreath, Women's Day orchid, Ramzan dates). Dropped because the
+  data has nothing real for them: stationery, toys, tricolour (only a "Tricolor" pasta), Mother's Day name match (only
+  a pickle brand "Maa's"). Father's Day and Friendship Day plan from the general groups.
+- **Basket -> app.** `SHOP` in app.js opens each app's own search for a product (blinkit.com/s/?q=, swiggy.com/instamart/
+  search?query=, flipkart.com/search?...&marketplace=HYPERLOCAL, bigbasket.com/ps/?q=). No site can fill another app's
+  cart; the page says so, and that the app's live price can differ from the Lab price. Checked 2026-10-24 in Chrome:
+  Blinkit opens the search with Add buttons; Instamart's own search box writes exactly `search?custom_back=true&query=`,
+  but a cold visit asks for a location or sign-in first (the page warns); BigBasket answers 200 and Flipkart routes
+  through its location page keeping the search (curl; the browser extension may not visit those two). If an app
+  changes its search URL, `SHOP` is the one place.
+- **Simulate / Optimize for everyone.** The "Change a price" and "Reach a goal" tabs are a sentence of inline selects,
+  answered in a sentence ("cheapest for N of every 100 products") with two 100-square grids; presets, a three-step
+  guide, a glossary, and one plain line on every other tab; the old charts sit under "The details". The wording rule
+  holds: the smoke test caught "the real market" in new text on 2026-10-23 and it was reworded.
+- **Product photos: Open Food Facts only (scripts/fetch_product_photos.py -> data/reference/PRODUCT_PHOTOS.json).** The
+  owner asked for Google/Blinkit photos; declined (brand and Blinkit copyright, Blinkit's terms, this project's
+  no-scraping rule) and replaced by Open Food Facts (CC BY-SA 3.0), credited on Data & trust. Strict match: brand at the
+  start of our name AND every word of their name in ours (at least two) AND at least half of ours in theirs AND a gift
+  pack only matches a gift pack; captions say what the photo shows (another pack size is labelled). Food only. The
+  first full run (2026-10-24) used ">= 75% of their words" with no reverse check and put a plain Dairy Milk bar on a
+  Silk Heart Blush gift pack and a plain KitKat on two Rakhi gift packs; tests/test_publish.py pins those refusals.
+  Coverage is modest and refusals are deliberate (a wrong photo is worse than a drawing). Hotlinked from images.openfoodfacts.org (CSP img-src allows that host only); the drawing stays under it.
+- **Runner.** `keep_awake()` (SetThreadExecutionState) stops idle sleep during a run: on 2026-10-22 at 01:42 sleep
+  (Kernel-Power 42) killed step 34. A partial run (--step/--only/--from/--resume) now merges into run_all.json.
+  Long runs are launched hidden (WMI, ShowWindow=0): the owner closed a visible console window once and killed a run.

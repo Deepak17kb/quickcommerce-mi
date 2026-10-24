@@ -40,7 +40,7 @@ def kb() -> KB:
 
 @lru_cache(maxsize=1)
 def real_rows() -> pd.DataFrame:
-    r = L.real_only(L.load_raw())
+    r = L.load_real()                       # the REAL rows only, filtered while reading (src/load.py)
     assert r.data_status.eq('REAL').all()
     return r
 

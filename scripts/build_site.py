@@ -84,10 +84,13 @@ def meta() -> dict:
                 for p in PLAT if p in mix.index],
         'stores': int(raw.store_id.nunique()), 'products': int(L.load_catalog().shape[0]),
         'snapshots': int(raw[raw.data_status == 'SYNTHETIC'].snapshot_id.nunique()),
+        # tests = the ones that ran (passed or failed); a test skipped for want of an input is counted apart, not as failing
         'run': {'steps': len(run['steps']), 'ok': sum(s['ok'] for s in run['steps']), 'finished': run.get('finished_utc'),
-                'tests': len(cases), 'passed': sum(c['state'] == 'passed' for c in cases)},
+                'tests': sum(c['state'] != 'skipped' for c in cases), 'passed': sum(c['state'] == 'passed' for c in cases),
+                'skipped': sum(c['state'] == 'skipped' for c in cases)},
         'ledger': {'claims': ledger['claims'], 'numbers': ledger['numbers_checked'], 'stale': ledger['counts']['stale']},
         'contracts': (lambda k: {'passed': k['passed'], 'total': k['passed'] + k['failed']} if k else None)(contracts()),
+        'api': remote_api(),
         'storeLabel': provenance.store_label_status(),
         'webPrices': len(L.web_researched_price_ids()),
         'suggested': [shown for shown, _ in SUGGESTED_PAIRS],
@@ -264,6 +267,45 @@ def pipeline() -> dict:
             'needs': {k: v for k, v in runner.NEEDS.items() if v}, 'contracts': contracts()}
 
 
+def remote_api() -> str:
+    """The project's public analyst the live page may ask (site/config.json, or $QCOM_API); '' when there is none."""
+    import os
+    api = os.environ.get('QCOM_API')
+    if api is None:
+        f = SRC / 'config.json'
+        api = json.loads(f.read_text(encoding='utf-8')).get('api', '') if f.exists() else ''
+    api = str(api or '').strip()
+    import re
+    if api and not (api.startswith('https://') or re.match(r'http://(localhost|127\.0\.0\.1)(:\d+)?(/|$)', api)):
+        raise ValueError(f'the analyst URL must be https (the live site is), or this machine while trying it: {api}')
+    return api
+
+
+def badges(m: dict) -> dict:
+    """Shields.io endpoint badges for the README, read from this build's own numbers, so they never go stale:
+    https://img.shields.io/endpoint?url=<raw URL of site_dist/badges/NAME.json>."""
+    def badge(label, done, total, unit, ok_color='0c8a4b'):
+        full = total and done == total
+        return {'schemaVersion': 1, 'label': label, 'labelColor': '111216',
+                'message': f'{done} {unit}' if full else f'{done} of {total} {unit}',
+                'color': ok_color if full else 'd63a3f'}
+    run, ev = m['run'], None
+    tests = badge('tests', run['passed'], run['tests'], 'passing')
+    if run.get('skipped'):
+        tests['message'] += f", {run['skipped']} skipped"
+    out = {'tests': tests,
+           'pipeline': badge('pipeline', run['ok'], run['steps'], 'steps OK', 'c9f24a')}
+    if m.get('contracts'):
+        out['contracts'] = badge('data contracts', m['contracts']['passed'], m['contracts']['total'], 'hold', 'c9f24a')
+    f = OUT_DIR / 'analyst_eval.json'
+    if f.exists():
+        s = json.loads(f.read_text(encoding='utf-8'))['summary']
+        ev = (s['tuning']['passed'] + s['holdout']['passed'], s['tuning']['questions'] + s['holdout']['questions'])
+        out['analyst'] = badge('analyst', ev[0], ev[1], 'test questions', '2a78d6')
+    out['claims'] = badge('doc numbers', m['ledger']['claims'] - m['ledger']['stale'], m['ledger']['claims'], 'claims match outputs', '2a78d6')
+    return out
+
+
 def contracts() -> dict | None:
     """The data-contract gate's last report (src/pipeline/contracts.py), as the Pipeline page shows it."""
     f = ROOT / 'outputs' / 'run_log' / 'contracts.json'
@@ -416,6 +458,17 @@ def festive() -> dict:
     return json.loads(f.read_text(encoding='utf-8'))
 
 
+def photos() -> dict:
+    """Real product photos matched by scripts/fetch_product_photos.py (Open Food Facts, CC BY-SA 3.0): name|pack ->
+    the photo's address, what it shows and whose it is. Empty when the file has not been made: the page then draws."""
+    f = ROOT / 'data' / 'reference' / 'PRODUCT_PHOTOS.json'
+    if not f.exists():
+        return {}
+    keep = ('image', 'shows', 'source', 'license', 'credit', 'same_pack')
+    return {k: {x: v[x] for x in keep if x in v} for k, v in json.loads(f.read_text(encoding='utf-8'))['photos'].items()
+            if str(v.get('image', '')).startswith('https://images.openfoodfacts.org/')}
+
+
 def app_icons():
     """Icons and a web manifest, so a phone or tablet can add Qcom to its home screen (Android: Add to Home screen;
     iPhone and iPad: Share, then Add to Home Screen). Drawn here, four times larger and scaled down for smooth edges."""
@@ -449,7 +502,7 @@ def main():
     python_eval = json.loads((ROOT / 'outputs' / 'analyst' / 'eval_report.json').read_text(encoding='utf-8'))['offline']
     blocks = {
         'meta': meta(), 'models': models(), 'optimize': optimize(), 'pipeline': pipeline(),
-        'whatif': whatif, 'explorer': explorer, 'reality': reality, 'analyst': page_analyst, 'festive': festive(),
+        'whatif': whatif, 'explorer': explorer, 'reality': reality, 'analyst': page_analyst, 'festive': festive(), 'photos': photos(),
         'analystEval': {'browser': ev, 'python': {s: {'questions': python_eval[s]['summary']['questions'],
                                                       'passed': python_eval[s]['summary']['passed']}
                                                   for s in ('tuning_set', 'holdout_set')}},
@@ -468,8 +521,13 @@ def main():
     shell = ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
              '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n')
     OUT.write_text(shell + head + '</head><body>\n' + first + body + '</body></html>\n', encoding='utf-8', newline='\n')
+    (OUT_DIR / 'badges').mkdir(exist_ok=True)
+    for name, doc in badges(blocks['meta']).items():
+        (OUT_DIR / 'badges' / f'{name}.json').write_text(json.dumps(doc, ensure_ascii=False) + '\n', encoding='utf-8', newline='\n')
+    dist = script('deploy_pages').stage(ROOT / 'site_dist')   # what GitHub Pages serves; a push deploys it (.github/workflows/pages.yml)
     sizes = {k: round(len(json.dumps(v, default=str)) / 1024) for k, v in blocks.items()}
     print(f'wrote {OUT.relative_to(ROOT)} ({len(html) / 1024:.0f} KB)  blocks KB: {sizes}')
+    print(f'staged {dist} for GitHub Pages: commit and push it to publish (python scripts/deploy_pages.py does both)')
     print('open it with: python scripts/serve_site.py   (http://localhost:8000)')
     if ev:
         print('in-browser analyst, cache off:', json.dumps(ev['summary']))

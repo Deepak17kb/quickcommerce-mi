@@ -47,7 +47,7 @@ def test_built_site_is_self_contained_and_complete():
     html = _built()
     assert html.startswith('<!doctype html>') and '__DATA__' not in html and '/*__' not in html
     blocks = dict(re.findall(r'<script type="application/json" id="d-(\w+)">(.*?)</script>', html, flags=re.S))
-    assert set(blocks) == {'meta', 'models', 'optimize', 'pipeline', 'whatif', 'explorer', 'reality', 'analyst', 'analystEval', 'festive'}
+    assert set(blocks) == {'meta', 'models', 'optimize', 'pipeline', 'whatif', 'explorer', 'reality', 'analyst', 'analystEval', 'festive', 'photos'}
     data = {k: json.loads(v) for k, v in blocks.items()}                     # every block is valid JSON
     assert data['meta']['rows'] == 610_789 and len(data['models']) == 10
     assert sum(m['real'] for m in data['meta']['mix']) == 21_949              # only Blinkit has real rows
@@ -405,7 +405,10 @@ def test_every_response_carries_the_security_headers(server):
             assert h.get(k.lower()) == v, (path, k)
     csp = mod.SECURITY_HEADERS['Content-Security-Policy']
     assert "connect-src 'self'" in csp and "frame-ancestors 'none'" in csp and "object-src 'none'" in csp
-    assert 'https://fonts.googleapis.com' in csp and 'https://fonts.gstatic.com' in csp           # the only outside origins
+    assert 'https://fonts.googleapis.com' in csp and 'https://fonts.gstatic.com' in csp           # fonts
+    assert 'img-src ' + "'self' data: blob: https://images.openfoodfacts.org;" in csp          # product photos, nothing else
+    outside = set(re.findall(r'https://[a-z0-9.-]+', csp))
+    assert outside == {'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://images.openfoodfacts.org'}
     assert 'unsafe-eval' not in csp
 
 
@@ -456,3 +459,64 @@ def test_an_unexpected_error_is_answered_not_dropped(server, monkeypatch):
     monkeypatch.setattr(mod.UP, 'load', boom)
     status, ctype, body = _call(port, 'GET', '/api/products')
     assert status == 500 and ctype.startswith('application/json') and 'disk on fire' in json.loads(body)['error']
+
+
+# --------------------------------------------------------------------------- public, read-only mode (render.yaml)
+LIVE = 'https://deepak17kb.github.io'
+
+
+def test_public_mode_answers_any_host_writes_nothing_and_shares_two_routes(server):
+    mod, port = server
+    J = {'Content-Type': 'application/json'}
+    old = mod.PUBLIC
+    mod.PUBLIC = {'origins': {LIVE}}
+    try:
+        status, h, body = _full(port, 'GET', '/api/health', headers={'Host': 'qcom.onrender.com', 'Origin': LIVE})
+        j = json.loads(body)
+        assert status == 200 and j['writes'] is False and j['mode'] == 'public'
+        assert h['access-control-allow-origin'] == LIVE and h['vary'] == 'Origin'
+        assert _call(port, 'GET', '/', headers={'Host': 'qcom.onrender.com'})[0] == 200          # any Host
+        # the browser's preflight, then the question, from the live site
+        status, h, _ = _full(port, 'OPTIONS', '/api/ask', headers={'Origin': LIVE, 'Access-Control-Request-Method': 'POST',
+                                                                     'Access-Control-Request-Headers': 'content-type'})
+        assert status == 204 and h['access-control-allow-origin'] == LIVE and 'POST' in h['access-control-allow-methods']
+        status, h, body = _full(port, 'POST', '/api/ask', body=json.dumps({'q': 'What is Blinkit revenue?'}),
+                                headers={**J, 'Origin': LIVE})
+        assert status == 200 and h['access-control-allow-origin'] == LIVE and json.loads(body)['refused'] is True
+        # another site gets no CORS headers, and no other route is shared
+        status, h, _ = _full(port, 'OPTIONS', '/api/ask', headers={'Origin': 'https://elsewhere.example'})
+        assert status == 403 and 'access-control-allow-origin' not in h
+        assert 'access-control-allow-origin' not in _full(port, 'GET', '/api/metrics', headers={'Origin': LIVE})[1]
+        assert 'access-control-allow-origin' not in _full(port, 'GET', '/', headers={'Origin': LIVE})[1]
+        # nothing writes, and nothing anyone added is listed
+        assert _call(port, 'POST', '/api/products', body=json.dumps({'name': 'x'}), headers=J)[0] == 403
+        assert _call(port, 'PUT', '/api/products/0123456789ab', body=json.dumps({'name': 'x'}), headers=J)[0] == 403
+        assert _call(port, 'DELETE', '/api/products/0123456789ab')[0] == 403
+        assert _call(port, 'POST', '/api/unlock', body='{"code": "000000"}', headers=J)[0] == 403
+        assert json.loads(_call(port, 'GET', '/api/products')[2]) == {'products': []}
+    finally:
+        mod.PUBLIC = old
+    assert json.loads(_call(port, 'GET', '/api/health')[2])['writes'] is True                  # back to local
+
+
+def test_public_mode_limits_each_device_behind_the_proxy(server):
+    mod, port = server
+    J = {'Content-Type': 'application/json'}
+    old = mod.PUBLIC, mod.LIMITS['ask']
+    mod.PUBLIC, mod.LIMITS['ask'] = {'origins': set()}, mod.RateLimiter(burst=1, per_minute=1)
+    try:
+        q = json.dumps({'q': 'What is Blinkit revenue?'})
+        ask = lambda ip: _call(port, 'POST', '/api/ask', body=q, headers={**J, 'X-Forwarded-For': f'203.0.113.9, {ip}'})[0]
+        # the proxy appends the device's address last; an earlier entry is whatever the client sent
+        assert [ask('10.0.0.1'), ask('10.0.0.1'), ask('10.0.0.2')] == [200, 429, 200]
+    finally:
+        mod.PUBLIC, mod.LIMITS['ask'] = old
+
+
+def test_public_server_binds_exactly_the_address_it_is_given():
+    mod = _script('serve_site')
+    srv = mod.make_server(0, host='127.0.0.1')
+    try:
+        assert srv.server_address[0] == '127.0.0.1' and srv.twin is None
+    finally:
+        srv.server_close()

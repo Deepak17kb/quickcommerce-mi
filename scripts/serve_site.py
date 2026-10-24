@@ -6,6 +6,7 @@ serve_site.py — the website on localhost, with the project's own analyst behin
     python scripts/serve_site.py --no-open      # do not open a browser
     python scripts/serve_site.py --rebuild      # rebuild outputs/site/index.html first
     python scripts/serve_site.py --lan          # also on phones and tablets on the same Wi-Fi, behind a six-digit code
+    python scripts/serve_site.py --public       # a read-only public server on $PORT (render.yaml); see PUBLIC below
 
     GET    /                          the built site (outputs/site/index.html), gzip when asked, revalidated by ETag
     GET    /sw.js                     the service worker: the page keeps working offline once it has loaded
@@ -43,6 +44,7 @@ import hashlib
 import hmac
 import importlib.util
 import json
+import os
 from collections import OrderedDict, deque
 import re
 import secrets
@@ -61,7 +63,7 @@ sys.path.insert(0, str(ROOT))
 from src import user_products as UP  # noqa: E402  (the products people add: data/user_added, never the project's data)
 
 SITE = ROOT / 'outputs' / 'site' / 'index.html'
-SOURCES = [ROOT / 'site' / f for f in ('index.html', 'app.css', 'app.js', 'analyst.js', 'sw.js')] + [ROOT / 'scripts' / 'build_site.py']
+SOURCES = [ROOT / 'site' / f for f in ('index.html', 'app.css', 'app.js', 'analyst.js', 'sw.js', 'config.json')] + [ROOT / 'scripts' / 'build_site.py']
 MAX_QUESTION = 500                 # characters
 MAX_BODY = 8192                    # bytes of a question's POST body
 MAX_PRODUCT_BODY = 5 * 1024 * 1024 # bytes of a new product, its photo included (base64 of at most 3 MB)
@@ -80,7 +82,7 @@ _state = {'ready': False, 'error': None}
 
 # ----------------------------------------------------------------------------- headers every response carries
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-       "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; "
+       "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.openfoodfacts.org; media-src 'self' blob: mediastream:; "
        "connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
        "form-action 'self'; object-src 'none'")
 SECURITY_HEADERS = {
@@ -168,6 +170,16 @@ def file_entry(path: Path):
 # code shown on this computer; the right code sets a cookie for the session. Five wrong codes from one device in ten
 # minutes and it waits. Every start makes a new code, so an old one stops working.
 LAN = None                         # {'code', 'token', 'hosts', 'urls'} in Wi-Fi mode
+
+# ----------------------------------------------------------------------------- public, read-only mode (a host on the internet)
+# Off unless started with --public (render.yaml does). Then the server answers any Host on $PORT, nothing writes
+# (products a visitor adds stay in their own browser), every device is rate-limited by the address the host's proxy
+# forwards, and pages on the allowed origins (the GitHub Pages site) may ask it questions across origins: CORS for
+# /api/health and /api/ask only. It serves the site it was given (scripts/fetch_outputs.py) and never rebuilds it.
+PUBLIC = None                      # {'origins': set of allowed origins} in public mode
+DEFAULT_ORIGINS = ('https://deepak17kb.github.io',)
+CORS_PATHS = ('/api/health', '/api/ask')
+READ_ONLY = 'This server is read-only: products you add stay in your own browser.'
 LOCK_AFTER, LOCK_WINDOW = 5, 600   # wrong codes from one device before it must wait, and the window in seconds
 COOKIE = 'qcom_key'
 _fails = {}                        # device address -> times of its recent wrong codes
@@ -341,7 +353,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', ctype)
             self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', cache)
-        for k, v in {**SECURITY_HEADERS, **(headers or {})}.items():
+        for k, v in {**SECURITY_HEADERS, **self._cors(), **(headers or {})}.items():
             self.send_header(k, v)
         self.end_headers()
         METRICS.hit(self._route(), code)
@@ -362,11 +374,32 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, gz, ctype, {**extra, 'Content-Encoding': 'gzip'}, cache)
         return self._send(200, body, ctype, extra, cache)
 
+    def _client(self) -> str:
+        """The device a request comes from. Behind a host's proxy (public mode) that is the last address the proxy
+        appended to X-Forwarded-For; earlier entries come from the client and could be anything."""
+        if PUBLIC:
+            fwd = [a.strip() for a in (self.headers.get('X-Forwarded-For') or '').split(',') if a.strip()]
+            if fwd:
+                return fwd[-1]
+        return self.client_address[0]
+
+    def _cors(self) -> dict:
+        """Public mode: a page on an allowed origin may read /api/health and /api/ask. Nothing else is shared."""
+        origin = self.headers.get('Origin') if getattr(self, 'headers', None) else None
+        if not PUBLIC or not origin or origin not in PUBLIC['origins'] or self.path.split('?', 1)[0] not in CORS_PATHS:
+            return {}
+        return {'Access-Control-Allow-Origin': origin, 'Vary': 'Origin'}
+
+    def _read_only(self):
+        self.close_connection = True
+        self._drain()
+        return self._json(403, {'error': READ_ONLY})
+
     def _limited(self, bucket: str) -> bool:
         """True (and a 429 sent) when this device has used up its requests of this kind for now."""
-        if is_loopback(self.client_address[0]) and not LIMIT_LOOPBACK:
+        if not PUBLIC and is_loopback(self.client_address[0]) and not LIMIT_LOOPBACK:
             return False
-        ok, wait = LIMITS[bucket].allow(self.client_address[0])
+        ok, wait = LIMITS[bucket].allow(self._client())
         if ok:
             return False
         METRICS.limited += 1
@@ -407,7 +440,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _gate(self) -> str:
         """A page on another site must not reach this server through the visitor's browser (the Host check), and in
-        Wi-Fi mode a device that is not this computer must have entered the code (the cookie check)."""
+        Wi-Fi mode a device that is not this computer must have entered the code (the cookie check). In public mode
+        there is nothing private to protect: any Host is answered, and nothing writes."""
+        if PUBLIC:
+            return 'ok'
         return gate(self.client_address[0], self.headers.get('Host'), self.headers.get('Cookie'), LAN)
 
     def _refuse(self, state: str):
@@ -445,13 +481,16 @@ class Handler(BaseHTTPRequestHandler):
             built = datetime.fromtimestamp(SITE.stat().st_mtime).isoformat(timespec='seconds') if SITE.exists() else None
             lan = {'urls': LAN['urls'], 'code': LAN['code']} if LAN and is_loopback(self.client_address[0]) else None
             return self._json(200, {'ok': True, 'ready': _state['ready'], 'error': _state['error'], 'analyst': 'offline',
-                                    'site_built': built, 'lan': lan})
+                                    'site_built': built, 'lan': lan, 'writes': not PUBLIC,
+                                    'mode': 'public' if PUBLIC else 'wifi' if LAN else 'local'})
         if path == '/api/metrics':
             return self._json(200, METRICS.snapshot())
         if path == '/api/products':
+            if PUBLIC:                                        # nothing is kept on a public server: the page keeps its own
+                return self._json(200, {'products': []})
             return self._json(200, {'products': [UP.public(p) for p in UP.load(PRODUCTS_STORE)]})
         m = PRODUCT_IMAGE.fullmatch(path)
-        if m:
+        if m and not PUBLIC:
             img = UP.image(m.group(1), PRODUCTS_STORE)
             return self._send(200, img[0], img[1]) if img else self._json(404, {'error': 'no such photo'})
         return self._json(404, {'error': 'not found'})
@@ -505,6 +544,8 @@ class Handler(BaseHTTPRequestHandler):
         state = self._gate()
         if state == 'host':
             return self._refuse(state)
+        if PUBLIC and path in ('/api/products', '/api/unlock'):
+            return self._read_only()
         if path == '/api/unlock':
             return self._unlock()
         if state == 'locked':
@@ -545,6 +586,8 @@ class Handler(BaseHTTPRequestHandler):
         state = self._gate()
         if state != 'ok':
             return self._refuse(state)
+        if PUBLIC:
+            return self._read_only()
         m = PRODUCT_ID.fullmatch(path)
         if not m:
             self.close_connection = True
@@ -569,10 +612,28 @@ class Handler(BaseHTTPRequestHandler):
         state = self._gate()
         if state != 'ok':
             return self._refuse(state)
+        if PUBLIC:
+            return self._read_only()
         m = PRODUCT_ID.fullmatch(path)
         if not m:
             return self._json(404, {'error': 'not found'})
         return self._json(200, {'ok': True}) if UP.remove(m.group(1), PRODUCTS_STORE) else self._json(404, {'error': 'no such product'})
+
+
+    def do_OPTIONS(self):
+        return self._guarded(self._options)
+
+    def _options(self):
+        """The browser's preflight before a cross-origin question (a JSON POST). Public mode, allowed origins and the
+        two shared routes only; anything else gets no CORS headers, so the browser refuses it."""
+        self.close_connection = True
+        self._drain()
+        cors = self._cors()
+        if not cors:
+            return self._json(403, {'error': 'cross-origin requests are not accepted here'})
+        return self._send(204, b'', 'text/plain', {'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                                                   'Access-Control-Allow-Headers': 'Content-Type',
+                                                   'Access-Control-Max-Age': '86400'})
 
 
 class Server(ThreadingHTTPServer):
@@ -601,12 +662,15 @@ class Server6(Server):
     address_family = socket.AF_INET6
 
 
-def make_server(port: int = 8000, tries: int = 20, lan: bool = False) -> Server:
+def make_server(port: int = 8000, tries: int = 20, lan: bool = False, host: str | None = None) -> Server:
     """A server on the loopback at `port`, or at the next free port after it. port=0 lets the system choose.
     It listens on 127.0.0.1 and, where there is one, on ::1 as well: Windows resolves "localhost" to ::1 first, and
     without a listener there every request waits about two seconds before falling back to 127.0.0.1.
     lan=True listens on every IPv4 address of this computer instead, so phones and tablets on the same Wi-Fi can reach
-    it; they still need the code (see gate)."""
+    it; they still need the code (see gate). host= binds exactly that address and port (public mode: the host assigns
+    the port, so there is no next one to try)."""
+    if host is not None:
+        return Server((host, port), Handler)
     last = None
     for p in ([0] if port == 0 else range(port, port + tries)):
         try:
@@ -645,7 +709,15 @@ def main():
     ap.add_argument('--verbose', action='store_true', help='log every request')
     ap.add_argument('--lan', action='store_true',
                     help='also open Qcom to phones and tablets on the same Wi-Fi, behind a six-digit code shown here')
+    ap.add_argument('--public', action='store_true',
+                    help='run as a read-only public server (a host such as Render): $PORT, any Host, CORS for the live site')
+    ap.add_argument('--host', default=None, help='public mode: the address to bind (default 0.0.0.0)')
+    ap.add_argument('--allow-origin', action='append', default=None,
+                    help='public mode: a site whose pages may ask questions (repeatable; default $QCOM_ALLOW_ORIGIN or '
+                         + ', '.join(DEFAULT_ORIGINS) + ')')
     args = ap.parse_args()
+    if args.public:
+        return main_public(args)
 
     if args.rebuild or stale():
         print('building the site ...' if not SITE.exists() else 'rebuilding the site (its sources changed) ...')
@@ -678,6 +750,30 @@ def main():
     threading.Thread(target=warm, daemon=True).start()
     if not args.no_open:
         threading.Timer(0.8, webbrowser.open, [url]).start()
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print('\nstopped')
+    finally:
+        srv.server_close()
+
+
+def main_public(args):
+    """Read-only on the internet. The site and outputs come from the release (python scripts/fetch_outputs.py)."""
+    global PUBLIC
+    if args.lan:
+        sys.exit('--public and --lan do not go together')
+    if not SITE.exists():
+        sys.exit('no built site at outputs/site/index.html: run python scripts/fetch_outputs.py first')
+    env = [o.strip() for o in os.environ.get('QCOM_ALLOW_ORIGIN', '').split(',') if o.strip()]
+    origins = {o.rstrip('/') for o in (args.allow_origin or env or DEFAULT_ORIGINS)}
+    PUBLIC = {'origins': origins}
+    port = int(os.environ.get('PORT') or args.port)
+    srv = make_server(port, host=args.host or '0.0.0.0')
+    srv.verbose = True if args.verbose or os.environ.get('QCOM_VERBOSE') else False
+    print(f'Qcom public and read-only on {srv.server_address[0]}:{srv.server_address[1]}; '
+          f'pages that may ask it questions: {", ".join(sorted(origins))}', flush=True)
+    threading.Thread(target=warm, daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

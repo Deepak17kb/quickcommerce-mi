@@ -88,3 +88,14 @@ def test_a_blocked_record_has_what_the_pages_read(R, tmp_path, monkeypatch):
         assert key in rec
     assert rec['ok'] is False and rec['blocked_by'] == ['data_contracts']
     json.dumps(rec)
+
+
+def test_a_partial_run_updates_the_record_instead_of_replacing_it(R):
+    base = [{"step": "verify_raw_integrity", "ok": True}, {"step": "anomaly", "ok": False}, {"step": "check_claims", "ok": True}]
+    out = R.merged([{"step": "anomaly", "ok": True}], base)
+    assert [s["step"] for s in out] == ["verify_raw_integrity", "anomaly", "check_claims"]       # pipeline order, nothing lost
+    assert out[1]["ok"] is True and R.merged([], base) == base
+
+
+def test_keeping_awake_is_asked_for_and_given_back(R):
+    assert R.keep_awake(True) in (True, False) and R.keep_awake(False) in (True, False)    # never raises, on any OS

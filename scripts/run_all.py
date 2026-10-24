@@ -254,6 +254,29 @@ def list_steps():
         print(f'{i:02d}  {g:<9} {n:<{width}}  needs: {needs}')
 
 
+def keep_awake(on: bool) -> bool:
+    """Windows: ask the system not to go to sleep while a run is going, and give the request back afterwards. Sleep
+    kills console processes: on 2026-10-22 at 01:42 an idle laptop went to sleep and took step 34 of 42 with it.
+    This is the request a media player or a download makes (SetThreadExecutionState); no setting is changed, and the
+    system drops it anyway when the process ends. The screen may still turn off."""
+    if sys.platform != 'win32':
+        return False
+    try:
+        import ctypes
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        flags = ES_CONTINUOUS | (ES_SYSTEM_REQUIRED if on else 0)
+        return bool(ctypes.windll.kernel32.SetThreadExecutionState(flags))
+    except Exception:                                   # not a reason to stop a run
+        return False
+
+
+def merged(results: list, base: list) -> list:
+    """The run record: this invocation's steps, and for every other step what the earlier record says, in pipeline
+    order. A run of one step (--step, --only, --from) or a --resume updates the record; it never replaces it."""
+    got, old = {r['step']: r for r in results}, {r['step']: r for r in base}
+    return [got.get(n) or old[n] for _, n, _, _ in STEPS if n in got or n in old]
+
+
 def summary(results: list):
     ran = [r for r in results if not r.get('resumed_from_earlier_run') and not r.get('blocked_by')]
     slow = sorted(ran, key=lambda r: -r['seconds'])[:5]
@@ -285,17 +308,27 @@ def main():
         return 0
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     started = datetime.now(timezone.utc)
-    done = {}
-    if a.resume and (LOG_DIR / 'run_all.json').exists():
+    done, base, prev_tests = {}, [], None
+    partial = bool(a.only or a.step or a.from_)
+    if (a.resume or partial) and (LOG_DIR / 'run_all.json').exists():
         prev = json.loads((LOG_DIR / 'run_all.json').read_text(encoding='utf-8'))
-        started = datetime.fromisoformat(prev['started_utc'])
-        done = {r['step']: r for r in prev['steps'] if r['ok']}
+        started, base, prev_tests = datetime.fromisoformat(prev['started_utc']), prev['steps'], prev.get('tests')
+        if a.resume:
+            done = {r['step']: r for r in prev['steps'] if r['ok']}
     picked = select(a)
     if a.dry_run:
         for (g, n, w, _), action, by in plan(picked, done, a.keep_going):
             print(f"{action.upper():<6} {n:<22} {w}" + (f"   (needs {', '.join(by)})" if by else ''))
         return 0
+    if keep_awake(True):
+        print('keeping this computer awake until the run ends (the screen may still turn off)', flush=True)
+    try:
+        return _run(a, picked, done, base, started, partial, prev_tests)
+    finally:
+        keep_awake(False)
 
+
+def _run(a, picked, done, base, started, partial, prev_tests) -> int:
     results, bad = [], set()
     for s in picked:
         name = s[1]
@@ -317,23 +350,25 @@ def main():
             state = 'OK  ' if r['ok'] else ('TIME' if r.get('timed_out') else 'FAIL')
             print(state + f" {r['seconds']:>7.1f}s  {', '.join(r['outputs_rewritten'])}", flush=True)
         (LOG_DIR / 'run_all.json').write_text(json.dumps({'started_utc': started.isoformat(timespec='seconds'),
-                                                          'python': sys.version.split()[0], 'steps': results,
+                                                          'python': sys.version.split()[0], 'steps': merged(results, base),
                                                           'finished': False}, indent=1), encoding='utf-8')
     tests = None if a.no_tests else run_tests()
     if tests:
         print('TESTS', tests['summary'])
-    doc = {'started_utc': started.isoformat(timespec='seconds'), 'resumed': bool(done),
+    steps = merged(results, base)
+    doc = {'started_utc': started.isoformat(timespec='seconds'), 'resumed': bool(done) or partial,
            'finished_utc': datetime.now(timezone.utc).isoformat(timespec='seconds'),
-           'python': sys.version.split()[0], 'platform': sys.platform, 'steps': results, 'tests': tests,
+           'python': sys.version.split()[0], 'platform': sys.platform, 'steps': steps,
+           'tests': tests if tests is not None else prev_tests,   # --no-tests keeps the last suite's result
            'finished': True}
     (LOG_DIR / 'run_all.json').write_text(json.dumps(doc, indent=1), encoding='utf-8')
-    print(f"{sum(r['ok'] for r in results)}/{len(results)} steps OK -> {LOG_DIR / 'run_all.json'}")
+    print(f"{sum(r['ok'] for r in steps)}/{len(steps)} steps OK -> {LOG_DIR / 'run_all.json'}"
+          + (f" ({sum(not r.get('resumed_from_earlier_run') for r in results)} run in this invocation)" if partial or done else ''))
     summary(results)
-    whole = not (a.only or a.step or a.from_)
-    if whole:
+    if not partial:
         doc['after_run'] = finalize()
         (LOG_DIR / 'run_all.json').write_text(json.dumps(doc, indent=1), encoding='utf-8')
-    ok = all(r['ok'] for r in results) and (tests is None or tests['exit_code'] == 0) and \
+    ok = all(r['ok'] for r in steps) and (tests is None or tests['exit_code'] == 0) and \
         all(r['ok'] for r in doc.get('after_run', []))
     return 0 if ok else 1
 

@@ -49,7 +49,10 @@ global.scrollTo = () => {};
 
 const failures = [];
 // a value that failed to bind shows up in the markup as one of these words, or as a bar wider than its track
-const BAD = /\b(NaN|undefined|Infinity)\b|\[object |width:\s*(1[1-9]\d|[2-9]\d\d|\d{4,})(\.\d+)?%/;
+// "Infinity" as a word inside a product name ("Ajmal Royal Touch Infinity Jewellery") is a name, not a number: a printed
+// Infinity has a sign, a digit or punctuation on at least one side; a name has a word on both. (Lookbehind is fine here:
+// this runs under node, not in a browser.)
+const BAD = /\b(NaN|undefined)\b|(?<![A-Za-z] )\bInfinity\b|\bInfinity\b(?! [A-Z])|\[object |width:\s*(1[1-9]\d|[2-9]\d\d|\d{4,})(\.\d+)?%/;
 // the two label words, as a reader would see them: standing alone or as a part of a name (real_rows). "Real" before
 // a number or a capital is a juice brand in the catalog ("Real 4.20%", "Real Fruit Power"); the filter leaves it alone.
 const WORD = /(?<![A-Za-z0-9])(real|synthetic)(?![A-Za-z0-9])/gi;
